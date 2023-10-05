@@ -1,0 +1,17 @@
+name: dagger
+
+on: [push]
+
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    steps:
+      -
+        name: Checkout
+        uses: actions/checkout@v3
+      - name: Setup Go environment
+        uses: actions/setup-go@v4.1.0
+        with:
+          go-version: '1.21.2'
+      - name: Run Dagger
+        run: "go run ./ci"

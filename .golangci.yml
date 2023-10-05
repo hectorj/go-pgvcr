@@ -1,0 +1,21 @@
+linters:
+    disable-all: true
+    enable:
+        - errcheck
+        - gosimple
+        - govet
+        - ineffassign
+        - staticcheck
+        - unused
+        - asasalint
+        - contextcheck
+        - decorder
+        - dogsled
+        - dupl
+        - exhaustive
+        - exportloopref
+        - goconst
+        - godox
+        - gosec
+        - musttag
+        - nilerr
