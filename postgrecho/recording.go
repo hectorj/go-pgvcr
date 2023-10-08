@@ -3,6 +3,7 @@ package postgrecho
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"github.com/hectorj/echo/postgrecho/internal"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -10,6 +11,7 @@ import (
 	wire "github.com/jeroenrinzema/psql-wire"
 	"github.com/lib/pq/oid"
 	"os"
+	"strings"
 	"sync"
 )
 
@@ -50,6 +52,9 @@ func (s *server) buildRecordingWireServer(ctx context.Context) (*wire.Server, er
 		eWriter.encoder.SetIndent("", "\t")
 
 		server, err = wire.NewServer(func(ctx context.Context, query string) (wire.PreparedStatementFn, []oid.Oid, wire.Columns, error) {
+			if strings.HasSuffix(query, "from stdin binary;") {
+				return nil, nil, nil, errors.New("copy from isn't supported by postgrecho yet")
+			}
 			sessionID := ctx.Value(sessionIDCtxKey).(int64)
 			prepare := internal.Prepare{
 				Query: query,
