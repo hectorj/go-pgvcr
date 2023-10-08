@@ -120,3 +120,44 @@ func TestRun_Concurrency(t *testing.T) {
 	}
 	require.NoError(t, eg.Wait())
 }
+
+func TestRun_CopyFrom(t *testing.T) {
+	t.Skip("not supported yet")
+	ctx, cancelFn := context.WithCancel(context.Background())
+	t.Cleanup(cancelFn)
+	server, err := NewServer(Config{
+		EchoFilePath: "testdata/echo_copyfrom.jsonl",
+		//Logger: slog.New(slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{
+		//	AddSource:   true,
+		//	Level:       slog.LevelDebug,
+		//	ReplaceAttr: nil,
+		//})),
+	}).Start(ctx)
+	require.NoError(t, err)
+
+	db, err := pgxpool.New(ctx, server.ConnectionString())
+	require.NoError(t, err)
+
+	_, err = db.Exec(ctx, `CREATE TABLE t (id serial PRIMARY KEY, data int[] NOT NULL)`)
+	require.NoError(t, err)
+
+	rowsCount, err := db.CopyFrom(ctx, pgx.Identifier{"t"}, []string{"data"}, pgx.CopyFromRows([][]any{
+		{
+			[]any{
+				[]int{4, 4, 2},
+			},
+			[]any{
+				[]int{3, 5, 2},
+			},
+			[]any{
+				[]int{7, 7, 7},
+			},
+		},
+	}))
+	require.NoError(t, err)
+	require.Equal(t, 3, rowsCount)
+
+	row := db.QueryRow(ctx, `SELECT COUNT(*) FROM t`)
+	require.NoError(t, row.Scan(&rowsCount))
+	require.Equal(t, 3, rowsCount)
+}

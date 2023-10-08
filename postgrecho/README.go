@@ -11,4 +11,5 @@
 // postgrecho is not recommended when:
 // - testing performances (the proxy may add a non-constant overhead in recording mode, and the original query latency is not replayed)
 // - testing database race conditions (unless you enable the strict mode, which forces you to always run your queries in the same order, effectively eliminating database race conditions by forbidding concurrency)
+// - you use `COPY FROM`, which isn't supported yet
 package postgrecho
