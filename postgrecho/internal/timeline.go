@@ -11,61 +11,59 @@ type ConsumableEcho struct {
 }
 
 type Timeline struct {
-	Echoes            []*ConsumableEcho
-	EchoesBySessionID map[int64][]*ConsumableEcho
-	SessionIDMappings map[int64]*int64
-	lock              sync.Mutex
+	Echoes []*ConsumableEcho
+	lock   sync.Mutex
 }
 
-func (t *Timeline) MatchPrepare(sessionID int64, query string) <-chan Echo {
-	return t.matchEcho(sessionID, func(echo Echo) bool {
+func (t *Timeline) MatchPrepare(query string, strictOrdering bool) <-chan Echo {
+	return t.matchEcho(func(echo Echo) bool {
 		return echo.MatchPrepare(query)
-	})
+	}, strictOrdering)
 }
 
-func (t *Timeline) matchEcho(sessionID int64, matcher func(Echo) bool) <-chan Echo {
+func (t *Timeline) matchEcho(matcher func(Echo) bool, strictOrdering bool) <-chan Echo {
 	t.lock.Lock()
 	defer t.lock.Unlock()
-	for recordedSessionID, echoes := range t.EchoesBySessionID {
-		if mappedSessionID := t.SessionIDMappings[recordedSessionID]; mappedSessionID != nil && *mappedSessionID != sessionID {
+
+	for _, echo := range t.Echoes {
+		if echo.consumed {
 			continue
 		}
+		if echo.reservation != nil {
+			if strictOrdering {
+				break
+			}
+			continue
+		}
+		if !matcher(echo.Echo) {
+			if strictOrdering {
+				break
+			}
+			continue
+		}
+		reservation := make(chan Echo, 1)
+		echo.reservation = reservation
 
-		for _, echo := range echoes {
-			if echo.consumed {
+		for _, sendingEcho := range t.Echoes {
+			if sendingEcho.consumed {
 				continue
 			}
-			if echo.reservation != nil {
+			if sendingEcho.reservation == nil {
 				break
 			}
-			if !matcher(echo.Echo) {
-				break
-			}
-			t.SessionIDMappings[recordedSessionID] = &sessionID
-			reservation := make(chan Echo, 1)
-			echo.reservation = reservation
-
-			for _, sendingEcho := range t.Echoes {
-				if sendingEcho.consumed {
-					continue
-				}
-				if sendingEcho.reservation == nil {
-					break
-				}
-				sendingEcho.reservation <- sendingEcho.Echo
-				close(sendingEcho.reservation)
-				sendingEcho.consumed = true
-			}
-
-			return reservation
+			sendingEcho.reservation <- sendingEcho.Echo
+			close(sendingEcho.reservation)
+			sendingEcho.consumed = true
 		}
+
+		return reservation
 	}
 
 	return nil
 }
 
-func (t *Timeline) MatchExecute(sessionID int64, query string, parameters []string) <-chan Echo {
-	return t.matchEcho(sessionID, func(echo Echo) bool {
+func (t *Timeline) MatchExecute(query string, parameters []string, strictOrdering bool) <-chan Echo {
+	return t.matchEcho(func(echo Echo) bool {
 		return echo.MatchExecute(query, parameters)
-	})
+	}, strictOrdering)
 }

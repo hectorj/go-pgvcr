@@ -10,7 +10,10 @@ import (
 	"github.com/lib/pq/oid"
 	"io"
 	"os"
+	"time"
 )
+
+const concurrencyToleranceTimeout = 3 * time.Second
 
 func (s *server) buildReplayingWireServer(_ context.Context) (*wire.Server, error) {
 	var wireServer *wire.Server
@@ -22,8 +25,7 @@ func (s *server) buildReplayingWireServer(_ context.Context) (*wire.Server, erro
 
 		decoder := json.NewDecoder(echoFile)
 		timeline := &internal.Timeline{
-			Echoes:            make([]*internal.ConsumableEcho, 0, 10),
-			EchoesBySessionID: make(map[int64][]*internal.ConsumableEcho, 10),
+			Echoes: make([]*internal.ConsumableEcho, 0, 10),
 		}
 		for {
 			echo := &internal.ConsumableEcho{}
@@ -31,7 +33,6 @@ func (s *server) buildReplayingWireServer(_ context.Context) (*wire.Server, erro
 				break
 			}
 			timeline.Echoes = append(timeline.Echoes, echo)
-			timeline.EchoesBySessionID[echo.Echo.SessionID] = append(timeline.EchoesBySessionID[echo.Echo.SessionID], echo)
 		}
 		if errors.Is(err, io.EOF) {
 			err = nil
@@ -39,18 +40,15 @@ func (s *server) buildReplayingWireServer(_ context.Context) (*wire.Server, erro
 		if err != nil {
 			return err
 		}
-		timeline.SessionIDMappings = mapMap(timeline.EchoesBySessionID, func(_ int64, _ []*internal.ConsumableEcho) *int64 {
-			return nil
-		})
+
+		strictOrdering := s.cfg.QueryOrderValidationStrategy == QueryOrderValidationStrategyStrict
 
 		wireServer, err = wire.NewServer(func(ctx context.Context, query string) (wire.PreparedStatementFn, []oid.Oid, wire.Columns, error) {
-			sessionID := ctx.Value(sessionIDCtxKey).(int64)
-
-			echoChan := timeline.MatchPrepare(sessionID, query)
-			if echoChan == nil {
-				panic(fmt.Errorf("prepare query %q unmatched", query))
+			echo, err := waitForEcho(query, nil, s.cfg.QueryOrderValidationStrategy, timeline.MatchPrepare(query, strictOrdering))
+			if err != nil {
+				return nil, nil, nil, err
 			}
-			echo := <-echoChan
+
 			prepare := echo.Prepare.Value
 
 			if prepare.Error != "" {
@@ -58,11 +56,10 @@ func (s *server) buildReplayingWireServer(_ context.Context) (*wire.Server, erro
 			}
 
 			statement := func(ctx context.Context, writer wire.DataWriter, parameters []string) error {
-				echoChan := timeline.MatchExecute(sessionID, query, parameters)
-				if echoChan == nil {
-					panic(fmt.Errorf("execute query %q(%v) unmatched", query, parameters))
+				echo, err := waitForEcho(query, parameters, s.cfg.QueryOrderValidationStrategy, timeline.MatchExecute(query, parameters, strictOrdering))
+				if err != nil {
+					return err
 				}
-				echo := <-echoChan
 				execute := echo.Execute.Value
 
 				for _, row := range execute.Rows {
@@ -88,4 +85,32 @@ func (s *server) buildReplayingWireServer(_ context.Context) (*wire.Server, erro
 		panic("should not happen")
 	}
 	return wireServer, nil
+}
+
+func waitForEcho(query string, parameters []string, strat QueryOrderValidationStrategy, echoChan <-chan internal.Echo) (internal.Echo, error) {
+	if echoChan == nil {
+		if parameters != nil {
+			return internal.Echo{}, fmt.Errorf("query %q with parameters (%v) is not in our records ; maybe you need to make a new postgrecho record", query, parameters)
+		}
+		return internal.Echo{}, fmt.Errorf("query %q is not in our records ; maybe you need to make a new postgrecho record", query)
+	}
+	var echo internal.Echo
+	switch strat {
+	case QueryOrderValidationStrategyStalling:
+		select {
+		case echo = <-echoChan:
+			return echo, nil
+		case <-time.After(concurrencyToleranceTimeout):
+		}
+	default:
+		select {
+		case echo = <-echoChan:
+			return echo, nil
+		default:
+		}
+	}
+	if parameters != nil {
+		return internal.Echo{}, fmt.Errorf("query %q with parameters (%v) is in our records, but not in this order ; maybe you need to make a new postgrecho record", query, parameters)
+	}
+	return internal.Echo{}, fmt.Errorf("query %q is in our records, but not in this order ; maybe you need to make a new postgrecho record", query)
 }

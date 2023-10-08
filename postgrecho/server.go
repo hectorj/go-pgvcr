@@ -30,6 +30,9 @@ func NewServer(cfg Config) Server {
 	if cfg.IsRecording == nil {
 		cfg.IsRecording = defaultIsRecording
 	}
+	if cfg.QueryOrderValidationStrategy == "" {
+		cfg.QueryOrderValidationStrategy = defaultQueryOrderValidationStrategy
+	}
 	if cfg.Logger == nil {
 		cfg.Logger = slog.New(noopHandler{})
 	}
@@ -80,7 +83,7 @@ func (s *server) Start(ctx context.Context) (StartedServer, error) {
 	return &startedServer{
 		wireServer:       wireServer,
 		eg:               eg,
-		connectionString: "postgresql://user:password@" + s.cfg.Listener.Addr().String() + "/db?sslmode=disable",
+		connectionString: "postgresql://user:password@" + s.cfg.Listener.Addr().String() + "/db?sslmode=disable&default_query_exec_mode=exec",
 		cancelFn:         cancelFn,
 	}, nil
 }

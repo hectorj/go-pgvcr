@@ -33,11 +33,3 @@ func anifySlice[T any](s []T) []any {
 		return any(v)
 	})
 }
-
-func mapMap[K comparable, V any, VOut any](m map[K]V, fn func(k K, v V) VOut) map[K]VOut {
-	result := make(map[K]VOut, len(m))
-	for k := range m {
-		result[k] = fn(k, m[k])
-	}
-	return result
-}

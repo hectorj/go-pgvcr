@@ -7,9 +7,12 @@ import (
 	. "github.com/hectorj/echo/postgrecho"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"testing"
-
 	"github.com/stretchr/testify/require"
+	"golang.org/x/sync/errgroup"
+	"math/rand"
+	"strconv"
+	"testing"
+	"time"
 )
 
 type testStruct struct {
@@ -22,10 +25,20 @@ func TestRun(t *testing.T) {
 	recordingServer := NewServer(Config{
 		EchoFilePath: "testdata/echo.jsonl",
 		IsRecording:  ForceRecording,
+		//Logger: slog.New(slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{
+		//	AddSource:   true,
+		//	Level:       slog.LevelDebug,
+		//	ReplaceAttr: nil,
+		//})),
 	})
 	replayingServer := NewServer(Config{
 		EchoFilePath: "testdata/echo.jsonl",
 		IsRecording:  ForceReplaying,
+		//Logger: slog.New(slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{
+		//	AddSource:   true,
+		//	Level:       slog.LevelDebug,
+		//	ReplaceAttr: nil,
+		//})),
 	})
 
 	for _, server := range []Server{recordingServer, replayingServer} {
@@ -75,4 +88,35 @@ func TestRun(t *testing.T) {
 			require.True(t, errors.Is(err, pgx.ErrNoRows))
 		}()
 	}
+}
+
+func TestRun_Concurrency(t *testing.T) {
+	ctx, cancelFn := context.WithCancel(context.Background())
+	t.Cleanup(cancelFn)
+	server, err := NewServer(Config{
+		EchoFilePath: "testdata/echo_concurrency.jsonl",
+		//Logger: slog.New(slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{
+		//	AddSource:   true,
+		//	Level:       slog.LevelDebug,
+		//	ReplaceAttr: nil,
+		//})),
+	}).Start(ctx)
+	require.NoError(t, err)
+
+	db, err := pgxpool.New(ctx, server.ConnectionString())
+	require.NoError(t, err)
+
+	eg, ctx := errgroup.WithContext(ctx)
+	for i := 0; i < 10; i++ {
+		i := i
+		eg.Go(func() error {
+			time.Sleep(time.Duration(rand.Intn(2000)) * time.Millisecond)
+			row := db.QueryRow(ctx, "SELECT $1::int -- query "+strconv.Itoa(i), i)
+			var result int
+			require.NoError(t, row.Scan(&result))
+			require.Equal(t, i, result)
+			return nil
+		})
+	}
+	require.NoError(t, eg.Wait())
 }

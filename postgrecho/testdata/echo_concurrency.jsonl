@@ -1,0 +1,410 @@
+{
+	"sessionID": 0,
+	"prepare": {
+		"query": "SELECT $1::int -- query 5",
+		"oids": [
+			23
+		],
+		"columns": [
+			{
+				"Table": 0,
+				"ID": 0,
+				"Attr": 0,
+				"Name": "int4",
+				"AttrNo": 0,
+				"Oid": 23,
+				"Width": 4,
+				"TypeModifier": -1,
+				"Format": 0
+			}
+		],
+		"error": ""
+	},
+	"execute": null
+}
+{
+	"sessionID": 1,
+	"prepare": {
+		"query": "SELECT $1::int -- query 8",
+		"oids": [
+			23
+		],
+		"columns": [
+			{
+				"Table": 0,
+				"ID": 0,
+				"Attr": 0,
+				"Name": "int4",
+				"AttrNo": 0,
+				"Oid": 23,
+				"Width": 4,
+				"TypeModifier": -1,
+				"Format": 0
+			}
+		],
+		"error": ""
+	},
+	"execute": null
+}
+{
+	"sessionID": 0,
+	"prepare": null,
+	"execute": {
+		"query": "SELECT $1::int -- query 5",
+		"parameters": [
+			"5"
+		],
+		"rows": [
+			[
+				5
+			]
+		],
+		"commandTag": "SELECT 1",
+		"error": ""
+	}
+}
+{
+	"sessionID": 1,
+	"prepare": null,
+	"execute": {
+		"query": "SELECT $1::int -- query 8",
+		"parameters": [
+			"8"
+		],
+		"rows": [
+			[
+				8
+			]
+		],
+		"commandTag": "SELECT 1",
+		"error": ""
+	}
+}
+{
+	"sessionID": 1,
+	"prepare": {
+		"query": "SELECT $1::int -- query 6",
+		"oids": [
+			23
+		],
+		"columns": [
+			{
+				"Table": 0,
+				"ID": 0,
+				"Attr": 0,
+				"Name": "int4",
+				"AttrNo": 0,
+				"Oid": 23,
+				"Width": 4,
+				"TypeModifier": -1,
+				"Format": 0
+			}
+		],
+		"error": ""
+	},
+	"execute": null
+}
+{
+	"sessionID": 1,
+	"prepare": null,
+	"execute": {
+		"query": "SELECT $1::int -- query 6",
+		"parameters": [
+			"6"
+		],
+		"rows": [
+			[
+				6
+			]
+		],
+		"commandTag": "SELECT 1",
+		"error": ""
+	}
+}
+{
+	"sessionID": 1,
+	"prepare": {
+		"query": "SELECT $1::int -- query 4",
+		"oids": [
+			23
+		],
+		"columns": [
+			{
+				"Table": 0,
+				"ID": 0,
+				"Attr": 0,
+				"Name": "int4",
+				"AttrNo": 0,
+				"Oid": 23,
+				"Width": 4,
+				"TypeModifier": -1,
+				"Format": 0
+			}
+		],
+		"error": ""
+	},
+	"execute": null
+}
+{
+	"sessionID": 1,
+	"prepare": null,
+	"execute": {
+		"query": "SELECT $1::int -- query 4",
+		"parameters": [
+			"4"
+		],
+		"rows": [
+			[
+				4
+			]
+		],
+		"commandTag": "SELECT 1",
+		"error": ""
+	}
+}
+{
+	"sessionID": 1,
+	"prepare": {
+		"query": "SELECT $1::int -- query 1",
+		"oids": [
+			23
+		],
+		"columns": [
+			{
+				"Table": 0,
+				"ID": 0,
+				"Attr": 0,
+				"Name": "int4",
+				"AttrNo": 0,
+				"Oid": 23,
+				"Width": 4,
+				"TypeModifier": -1,
+				"Format": 0
+			}
+		],
+		"error": ""
+	},
+	"execute": null
+}
+{
+	"sessionID": 1,
+	"prepare": null,
+	"execute": {
+		"query": "SELECT $1::int -- query 1",
+		"parameters": [
+			"1"
+		],
+		"rows": [
+			[
+				1
+			]
+		],
+		"commandTag": "SELECT 1",
+		"error": ""
+	}
+}
+{
+	"sessionID": 1,
+	"prepare": {
+		"query": "SELECT $1::int -- query 7",
+		"oids": [
+			23
+		],
+		"columns": [
+			{
+				"Table": 0,
+				"ID": 0,
+				"Attr": 0,
+				"Name": "int4",
+				"AttrNo": 0,
+				"Oid": 23,
+				"Width": 4,
+				"TypeModifier": -1,
+				"Format": 0
+			}
+		],
+		"error": ""
+	},
+	"execute": null
+}
+{
+	"sessionID": 1,
+	"prepare": null,
+	"execute": {
+		"query": "SELECT $1::int -- query 7",
+		"parameters": [
+			"7"
+		],
+		"rows": [
+			[
+				7
+			]
+		],
+		"commandTag": "SELECT 1",
+		"error": ""
+	}
+}
+{
+	"sessionID": 1,
+	"prepare": {
+		"query": "SELECT $1::int -- query 3",
+		"oids": [
+			23
+		],
+		"columns": [
+			{
+				"Table": 0,
+				"ID": 0,
+				"Attr": 0,
+				"Name": "int4",
+				"AttrNo": 0,
+				"Oid": 23,
+				"Width": 4,
+				"TypeModifier": -1,
+				"Format": 0
+			}
+		],
+		"error": ""
+	},
+	"execute": null
+}
+{
+	"sessionID": 1,
+	"prepare": null,
+	"execute": {
+		"query": "SELECT $1::int -- query 3",
+		"parameters": [
+			"3"
+		],
+		"rows": [
+			[
+				3
+			]
+		],
+		"commandTag": "SELECT 1",
+		"error": ""
+	}
+}
+{
+	"sessionID": 1,
+	"prepare": {
+		"query": "SELECT $1::int -- query 0",
+		"oids": [
+			23
+		],
+		"columns": [
+			{
+				"Table": 0,
+				"ID": 0,
+				"Attr": 0,
+				"Name": "int4",
+				"AttrNo": 0,
+				"Oid": 23,
+				"Width": 4,
+				"TypeModifier": -1,
+				"Format": 0
+			}
+		],
+		"error": ""
+	},
+	"execute": null
+}
+{
+	"sessionID": 1,
+	"prepare": null,
+	"execute": {
+		"query": "SELECT $1::int -- query 0",
+		"parameters": [
+			"0"
+		],
+		"rows": [
+			[
+				0
+			]
+		],
+		"commandTag": "SELECT 1",
+		"error": ""
+	}
+}
+{
+	"sessionID": 1,
+	"prepare": {
+		"query": "SELECT $1::int -- query 9",
+		"oids": [
+			23
+		],
+		"columns": [
+			{
+				"Table": 0,
+				"ID": 0,
+				"Attr": 0,
+				"Name": "int4",
+				"AttrNo": 0,
+				"Oid": 23,
+				"Width": 4,
+				"TypeModifier": -1,
+				"Format": 0
+			}
+		],
+		"error": ""
+	},
+	"execute": null
+}
+{
+	"sessionID": 1,
+	"prepare": null,
+	"execute": {
+		"query": "SELECT $1::int -- query 9",
+		"parameters": [
+			"9"
+		],
+		"rows": [
+			[
+				9
+			]
+		],
+		"commandTag": "SELECT 1",
+		"error": ""
+	}
+}
+{
+	"sessionID": 1,
+	"prepare": {
+		"query": "SELECT $1::int -- query 2",
+		"oids": [
+			23
+		],
+		"columns": [
+			{
+				"Table": 0,
+				"ID": 0,
+				"Attr": 0,
+				"Name": "int4",
+				"AttrNo": 0,
+				"Oid": 23,
+				"Width": 4,
+				"TypeModifier": -1,
+				"Format": 0
+			}
+		],
+		"error": ""
+	},
+	"execute": null
+}
+{
+	"sessionID": 1,
+	"prepare": null,
+	"execute": {
+		"query": "SELECT $1::int -- query 2",
+		"parameters": [
+			"2"
+		],
+		"rows": [
+			[
+				2
+			]
+		],
+		"commandTag": "SELECT 1",
+		"error": ""
+	}
+}

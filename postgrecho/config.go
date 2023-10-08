@@ -23,10 +23,27 @@ type Config struct {
 	// It is meant to be an *slog.Logger.
 	// Default value is a no-op logger.
 	Logger *slog.Logger
+	// QueryOrderValidationStrategy determines how to handle out-of-order queries in replay mode.
+	// Default is QueryOrderValidationStrategyStalling
+	QueryOrderValidationStrategy QueryOrderValidationStrategy
 	// Listener
 	// Default value listens on tcp://127.0.0.1: (random port)
 	Listener net.Listener
 }
+
+type QueryOrderValidationStrategy string
+
+const (
+	// QueryOrderValidationStrategyStrict forbids out-of-order queries.
+	// Probably won't work if you have concurrent queries, but provides more security if you don't.
+	QueryOrderValidationStrategyStrict QueryOrderValidationStrategy = "strict"
+	// QueryOrderValidationStrategyStalling handles out-of-order queries by stalling them until it is their turn.
+	// This allows concurrent queries as long as your queries don't end up waiting on each other (when you have maxed out your connection pool for example).
+	// A 3 seconds timeout is configured so that it doesn't hang forever.
+	QueryOrderValidationStrategyStalling QueryOrderValidationStrategy = "stalling"
+)
+
+var defaultQueryOrderValidationStrategy = QueryOrderValidationStrategyStalling
 
 const defaultEchoFilePath = "testdata/postgrecho.jsonl"
 
