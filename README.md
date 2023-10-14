@@ -1,1 +1,1 @@
-See [./postgrecho/README.go](./postgrecho/README.go)
+See [./grecho/README.go](grecho/README.go)

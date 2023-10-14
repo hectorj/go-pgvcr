@@ -1,13 +1,13 @@
-package postgrecho
+package grecho
 
 import (
 	"context"
-	wire "github.com/jeroenrinzema/psql-wire"
-	"golang.org/x/sync/errgroup"
 	"log/slog"
 	"net"
 	"strings"
 	"sync/atomic"
+
+	"golang.org/x/sync/errgroup"
 )
 
 type ConnectionString = string
@@ -36,7 +36,7 @@ func NewServer(cfg Config) Server {
 	if cfg.Logger == nil {
 		cfg.Logger = slog.New(noopHandler{})
 	}
-	cfg.Logger = cfg.Logger.WithGroup("postgrecho")
+	cfg.Logger = cfg.Logger.WithGroup("grecho")
 
 	return &server{
 		cfg: cfg,
@@ -52,19 +52,9 @@ func (s *server) Start(ctx context.Context) (StartedServer, error) {
 		return nil, err
 	}
 
-	var wireServer *wire.Server
-	if isRecording {
-		wireServer, err = s.buildRecordingWireServer(ctx)
-	} else {
-		wireServer, err = s.buildReplayingWireServer(ctx)
-	}
-	if err != nil {
-		cancelFn()
-		return nil, err
-	}
-
-	if s.cfg.Listener == nil {
-		s.cfg.Listener, err = net.Listen("tcp", "127.0.0.1:")
+	listener := s.cfg.Listener
+	if listener == nil {
+		listener, err = net.Listen("tcp", "127.0.0.1:")
 		if err != nil {
 			cancelFn()
 			return nil, err
@@ -73,23 +63,33 @@ func (s *server) Start(ctx context.Context) (StartedServer, error) {
 
 	eg, ctx := errgroup.WithContext(ctx)
 
-	eg.Go(func() error {
-		<-ctx.Done()
-		return wireServer.Close()
-	})
+	var serveFunc func() error
+	if isRecording {
+		serveFunc, err = s.recordingServer(ctx, listener)
+	} else {
+		serveFunc, err = s.replayingServer(ctx, listener)
+	}
+	if err != nil {
+		cancelFn()
+		return nil, err
+	}
+	eg.Go(serveFunc)
 
-	eg.Go(func() error { return wireServer.Serve(s.cfg.Listener) })
+	eg.Go(
+		func() error {
+			<-ctx.Done()
+			return listener.Close()
+		},
+	)
 
 	return &startedServer{
-		wireServer:       wireServer,
 		eg:               eg,
-		connectionString: "postgresql://user:password@" + s.cfg.Listener.Addr().String() + "/db?sslmode=disable&default_query_exec_mode=exec",
+		connectionString: "postgresql://user:password@" + listener.Addr().String() + "/db?sslmode=disable",
 		cancelFn:         cancelFn,
 	}, nil
 }
 
 type startedServer struct {
-	wireServer       *wire.Server
 	connectionString ConnectionString
 	eg               *errgroup.Group
 	cancelFn         context.CancelFunc

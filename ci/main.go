@@ -2,11 +2,12 @@ package main
 
 import (
 	"context"
-	"dagger.io/dagger"
 	"fmt"
-	"golang.org/x/sync/errgroup"
 	"os"
 	"runtime"
+
+	"dagger.io/dagger"
+	"golang.org/x/sync/errgroup"
 )
 
 func main() {
@@ -25,9 +26,11 @@ func build(ctx context.Context) error {
 	}
 	defer client.Close()
 
-	src := client.Host().Directory(".", dagger.HostDirectoryOpts{
-		Exclude: []string{".git/", ".idea/", "ci/"},
-	})
+	src := client.Host().Directory(
+		".", dagger.HostDirectoryOpts{
+			Exclude: []string{".git/", ".idea/", "ci/"},
+		},
+	)
 
 	goMod := client.Host().File("./go.mod")
 	goSum := client.Host().File("./go.sum")
@@ -40,7 +43,13 @@ func build(ctx context.Context) error {
 	editorconfigChecker := node.WithDirectory("/src", src).
 		WithExec([]string{"npx", "editorconfig-checker@5.1.1"})
 
-	golangciLint := golangWithDependencies.WithExec([]string{"go", "install", "github.com/golangci/golangci-lint/cmd/golangci-lint@v1.54.2"}).
+	golangciLint := golangWithDependencies.WithExec(
+		[]string{
+			"go",
+			"install",
+			"github.com/golangci/golangci-lint/cmd/golangci-lint@v1.54.2",
+		},
+	).
 		WithDirectory("/src", src).
 		WithExec([]string{"golangci-lint", "run"})
 
@@ -50,7 +59,7 @@ func build(ctx context.Context) error {
 		WithEnvVariable("POSTGRES_PASSWORD", "password")
 
 	tests := golangWithDependencies.WithServiceBinding("postgres", postgres).
-		WithEnvVariable("POSTGRECHO_DSN", "postgres://user:password@postgres:5432/db?sslmode=disable").
+		WithEnvVariable("grecho_DSN", "postgres://user:password@postgres:5432/db?sslmode=disable").
 		WithDirectory("/src", src).
 		WithExec([]string{"go", "test", "./..."})
 

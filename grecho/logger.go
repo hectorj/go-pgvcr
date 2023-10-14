@@ -1,4 +1,4 @@
-package postgrecho
+package grecho
 
 import (
 	"context"

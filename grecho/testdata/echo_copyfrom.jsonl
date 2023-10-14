@@ -1,0 +1,300 @@
+{
+	"connectionID": 1,
+	"sequences": [
+		{
+			"clientMessages": null,
+			"serverMessages": [
+				{
+					"type": 83,
+					"content": "YXBwbGljYXRpb25fbmFtZQAA",
+					"stringContent": "application_name\u0000\u0000"
+				},
+				{
+					"type": 83,
+					"content": "Y2xpZW50X2VuY29kaW5nAFVURjgA",
+					"stringContent": "client_encoding\u0000UTF8\u0000"
+				},
+				{
+					"type": 83,
+					"content": "RGF0ZVN0eWxlAElTTywgTURZAA==",
+					"stringContent": "DateStyle\u0000ISO, MDY\u0000"
+				},
+				{
+					"type": 83,
+					"content": "ZGVmYXVsdF90cmFuc2FjdGlvbl9yZWFkX29ubHkAb2ZmAA==",
+					"stringContent": "default_transaction_read_only\u0000off\u0000"
+				},
+				{
+					"type": 83,
+					"content": "aW5faG90X3N0YW5kYnkAb2ZmAA==",
+					"stringContent": "in_hot_standby\u0000off\u0000"
+				},
+				{
+					"type": 83,
+					"content": "aW50ZWdlcl9kYXRldGltZXMAb24A",
+					"stringContent": "integer_datetimes\u0000on\u0000"
+				},
+				{
+					"type": 83,
+					"content": "SW50ZXJ2YWxTdHlsZQBwb3N0Z3JlcwA=",
+					"stringContent": "IntervalStyle\u0000postgres\u0000"
+				},
+				{
+					"type": 83,
+					"content": "aXNfc3VwZXJ1c2VyAG9uAA==",
+					"stringContent": "is_superuser\u0000on\u0000"
+				},
+				{
+					"type": 83,
+					"content": "c2VydmVyX2VuY29kaW5nAFVURjgA",
+					"stringContent": "server_encoding\u0000UTF8\u0000"
+				},
+				{
+					"type": 83,
+					"content": "c2VydmVyX3ZlcnNpb24AMTUuMgA=",
+					"stringContent": "server_version\u000015.2\u0000"
+				},
+				{
+					"type": 83,
+					"content": "c2Vzc2lvbl9hdXRob3JpemF0aW9uAHVzZXIA",
+					"stringContent": "session_authorization\u0000user\u0000"
+				},
+				{
+					"type": 83,
+					"content": "c3RhbmRhcmRfY29uZm9ybWluZ19zdHJpbmdzAG9uAA==",
+					"stringContent": "standard_conforming_strings\u0000on\u0000"
+				},
+				{
+					"type": 83,
+					"content": "VGltZVpvbmUAVVRDAA==",
+					"stringContent": "TimeZone\u0000UTC\u0000"
+				},
+				{
+					"type": 75,
+					"content": "AAAAOCrkQ/0=",
+					"stringContent": "\u0000\u0000\u00008*\ufffdC\ufffd"
+				},
+				{
+					"type": 90,
+					"content": "SQ==",
+					"stringContent": "I"
+				}
+			]
+		}
+	]
+}
+{
+	"connectionID": 1,
+	"sequences": [
+		{
+			"clientMessages": [
+				{
+					"type": 81,
+					"content": "Q1JFQVRFIFRBQkxFIHQgKGlkIHNlcmlhbCBQUklNQVJZIEtFWSwgZGF0YSBpbnRbXSBOT1QgTlVMTCkA",
+					"stringContent": "CREATE TABLE t (id serial PRIMARY KEY, data int[] NOT NULL)\u0000"
+				}
+			],
+			"serverMessages": [
+				{
+					"type": 67,
+					"content": "Q1JFQVRFIFRBQkxFAA==",
+					"stringContent": "CREATE TABLE\u0000"
+				},
+				{
+					"type": 90,
+					"content": "SQ==",
+					"stringContent": "I"
+				}
+			]
+		}
+	]
+}
+{
+	"connectionID": 1,
+	"sequences": [
+		{
+			"clientMessages": [
+				{
+					"type": 80,
+					"content": "c3RtdGNhY2hlXzE5AHNlbGVjdCAiZGF0YSIgZnJvbSAidCIAAAA=",
+					"stringContent": "stmtcache_19\u0000select \"data\" from \"t\"\u0000\u0000\u0000"
+				},
+				{
+					"type": 68,
+					"content": "U3N0bXRjYWNoZV8xOQA=",
+					"stringContent": "Sstmtcache_19\u0000"
+				},
+				{
+					"type": 83,
+					"content": "",
+					"stringContent": ""
+				}
+			],
+			"serverMessages": [
+				{
+					"type": 49,
+					"content": "",
+					"stringContent": ""
+				},
+				{
+					"type": 116,
+					"content": "AAA=",
+					"stringContent": "\u0000\u0000"
+				},
+				{
+					"type": 84,
+					"content": "AAFkYXRhAAAAQAIAAgAAA+////////8AAA==",
+					"stringContent": "\u0000\u0001data\u0000\u0000\u0000@\u0002\u0000\u0002\u0000\u0000\u0003\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\u0000\u0000"
+				},
+				{
+					"type": 90,
+					"content": "SQ==",
+					"stringContent": "I"
+				}
+			]
+		}
+	]
+}
+{
+	"connectionID": 1,
+	"sequences": [
+		{
+			"clientMessages": [
+				{
+					"type": 81,
+					"content": "Y29weSAidCIgKCAiZGF0YSIgKSBmcm9tIHN0ZGluIGJpbmFyeTsA",
+					"stringContent": "copy \"t\" ( \"data\" ) from stdin binary;\u0000"
+				},
+				{
+					"type": 100,
+					"content": "UEdDT1BZCv8NCgAAAAAAAAAAAAABAAAALAAAAAEAAAAAAAAAFwAAAAMAAAABAAAABAAAAAQAAAAEAAAABAAAAAQAAAACAAEAAAAsAAAAAQAAAAAAAAAXAAAAAwAAAAEAAAAEAAAAAwAAAAQAAAAFAAAABAAAAAIAAQAAACwAAAABAAAAAAAAABcAAAADAAAAAQAAAAQAAAAHAAAABAAAAAcAAAAEAAAABw==",
+					"stringContent": "PGCOPY\n\ufffd\r\n\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0001\u0000\u0000\u0000,\u0000\u0000\u0000\u0001\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0017\u0000\u0000\u0000\u0003\u0000\u0000\u0000\u0001\u0000\u0000\u0000\u0004\u0000\u0000\u0000\u0004\u0000\u0000\u0000\u0004\u0000\u0000\u0000\u0004\u0000\u0000\u0000\u0004\u0000\u0000\u0000\u0002\u0000\u0001\u0000\u0000\u0000,\u0000\u0000\u0000\u0001\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0017\u0000\u0000\u0000\u0003\u0000\u0000\u0000\u0001\u0000\u0000\u0000\u0004\u0000\u0000\u0000\u0003\u0000\u0000\u0000\u0004\u0000\u0000\u0000\u0005\u0000\u0000\u0000\u0004\u0000\u0000\u0000\u0002\u0000\u0001\u0000\u0000\u0000,\u0000\u0000\u0000\u0001\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0017\u0000\u0000\u0000\u0003\u0000\u0000\u0000\u0001\u0000\u0000\u0000\u0004\u0000\u0000\u0000\u0007\u0000\u0000\u0000\u0004\u0000\u0000\u0000\u0007\u0000\u0000\u0000\u0004\u0000\u0000\u0000\u0007"
+				},
+				{
+					"type": 99,
+					"content": "",
+					"stringContent": ""
+				}
+			],
+			"serverMessages": [
+				{
+					"type": 71,
+					"content": "AQABAAE=",
+					"stringContent": "\u0001\u0000\u0001\u0000\u0001"
+				},
+				{
+					"type": 67,
+					"content": "Q09QWSAzAA==",
+					"stringContent": "COPY 3\u0000"
+				},
+				{
+					"type": 90,
+					"content": "SQ==",
+					"stringContent": "I"
+				}
+			]
+		}
+	]
+}
+{
+	"connectionID": 1,
+	"sequences": [
+		{
+			"clientMessages": [
+				{
+					"type": 80,
+					"content": "c3RtdGNhY2hlXzIwAFNFTEVDVCBDT1VOVCgqKSBGUk9NIHQAAAA=",
+					"stringContent": "stmtcache_20\u0000SELECT COUNT(*) FROM t\u0000\u0000\u0000"
+				},
+				{
+					"type": 68,
+					"content": "U3N0bXRjYWNoZV8yMAA=",
+					"stringContent": "Sstmtcache_20\u0000"
+				},
+				{
+					"type": 83,
+					"content": "",
+					"stringContent": ""
+				}
+			],
+			"serverMessages": [
+				{
+					"type": 49,
+					"content": "",
+					"stringContent": ""
+				},
+				{
+					"type": 116,
+					"content": "AAA=",
+					"stringContent": "\u0000\u0000"
+				},
+				{
+					"type": 84,
+					"content": "AAFjb3VudAAAAAAAAAAAAAAUAAj/////AAA=",
+					"stringContent": "\u0000\u0001count\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0014\u0000\u0008\ufffd\ufffd\ufffd\ufffd\u0000\u0000"
+				},
+				{
+					"type": 90,
+					"content": "SQ==",
+					"stringContent": "I"
+				}
+			]
+		}
+	]
+}
+{
+	"connectionID": 1,
+	"sequences": [
+		{
+			"clientMessages": [
+				{
+					"type": 66,
+					"content": "AHN0bXRjYWNoZV8yMAAAAAAAAAEAAQ==",
+					"stringContent": "\u0000stmtcache_20\u0000\u0000\u0000\u0000\u0000\u0000\u0001\u0000\u0001"
+				},
+				{
+					"type": 68,
+					"content": "UAA=",
+					"stringContent": "P\u0000"
+				},
+				{
+					"type": 69,
+					"content": "AAAAAAA=",
+					"stringContent": "\u0000\u0000\u0000\u0000\u0000"
+				},
+				{
+					"type": 83,
+					"content": "",
+					"stringContent": ""
+				}
+			],
+			"serverMessages": [
+				{
+					"type": 50,
+					"content": "",
+					"stringContent": ""
+				},
+				{
+					"type": 84,
+					"content": "AAFjb3VudAAAAAAAAAAAAAAUAAj/////AAE=",
+					"stringContent": "\u0000\u0001count\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0014\u0000\u0008\ufffd\ufffd\ufffd\ufffd\u0000\u0001"
+				},
+				{
+					"type": 68,
+					"content": "AAEAAAAIAAAAAAAAAAM=",
+					"stringContent": "\u0000\u0001\u0000\u0000\u0000\u0008\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0003"
+				},
+				{
+					"type": 67,
+					"content": "U0VMRUNUIDEA",
+					"stringContent": "SELECT 1\u0000"
+				},
+				{
+					"type": 90,
+					"content": "SQ==",
+					"stringContent": "I"
+				}
+			]
+		}
+	]
+}

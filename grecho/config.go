@@ -1,4 +1,4 @@
-package postgrecho
+package grecho
 
 import (
 	"context"
@@ -9,9 +9,9 @@ import (
 
 type Config struct {
 	// EchoFilePath should be a path to a file we can read and write to store the mocking data.
-	// Default value is "testdata/postgrecho.jsonl"
+	// Default value is "testdata/grecho.jsonl"
 	EchoFilePath string
-	// RealPostgresBuilder is a function returning a connection string to a real postgres database.
+	// RealPostgresBuilder is a function returning the network address (host:port) of a real postgres database.
 	// It will only be used when recording.
 	// Default value uses "github.com/testcontainers/testcontainers-go/modules/postgres" to start a postgres in Docker.
 	// Unused in replaying mode.
@@ -45,7 +45,7 @@ const (
 
 var defaultQueryOrderValidationStrategy = QueryOrderValidationStrategyStalling
 
-const defaultEchoFilePath = "testdata/postgrecho.jsonl"
+const defaultEchoFilePath = "testdata/grecho.jsonl"
 
 func ForceRecording(_ context.Context, _ Config) (bool, error) {
 	return true, nil

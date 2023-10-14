@@ -1,4 +1,4 @@
-package postgrecho
+package grecho
 
 func panicIfErr(err error) {
 	if err != nil {
@@ -29,7 +29,9 @@ func mapSliceWithIndex[In any, Out any](s []In, fn func(i int, v In) Out) []Out 
 }
 
 func anifySlice[T any](s []T) []any {
-	return mapSlice(s, func(v T) any {
-		return any(v)
-	})
+	return mapSlice(
+		s, func(v T) any {
+			return any(v)
+		},
+	)
 }
