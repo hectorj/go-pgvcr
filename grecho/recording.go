@@ -32,7 +32,7 @@ func (s *server) recordingServer(ctx context.Context, listener net.Listener) (fu
 	return func() error {
 		defer recorder.Close()
 		eg, ctx := errgroup.WithContext(ctx)
-		defer eg.Wait()
+		defer eg.Wait() //nolint:errcheck // FIXME
 		connectionCounter := &atomic.Uint64{}
 		for {
 			clientConn, err := listener.Accept()

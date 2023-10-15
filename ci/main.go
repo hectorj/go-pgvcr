@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"runtime"
 
 	"dagger.io/dagger"
 	"golang.org/x/sync/errgroup"
@@ -59,7 +58,7 @@ func build(ctx context.Context) error {
 		WithEnvVariable("POSTGRES_PASSWORD", "password")
 
 	tests := golangWithDependencies.WithServiceBinding("postgres", postgres).
-		WithEnvVariable("grecho_DSN", "postgres://user:password@postgres:5432/db?sslmode=disable").
+		WithEnvVariable("grecho_TARGET_ADDR", "postgres://user:password@postgres:5432/db?sslmode=disable").
 		WithDirectory("/src", src).
 		WithExec([]string{"go", "test", "./..."})
 
@@ -77,8 +76,4 @@ func sync(ctx context.Context, container *dagger.Container) func() error {
 		_, err := container.Sync(ctx)
 		return err
 	}
-}
-
-func isWindows() bool {
-	return os.Getenv("GOOS") == "windows" || runtime.GOOS == "windows"
 }

@@ -96,7 +96,7 @@ func TestRun_Concurrency(t *testing.T) {
 				conn, err := db.Acquire(ctx)
 				require.NoError(t, err)
 				defer conn.Release()
-				time.Sleep(time.Duration(rand.Intn(2000)) * time.Millisecond)
+				time.Sleep(time.Duration(rand.Intn(2000)) * time.Millisecond) //nolint:gosec
 				row := conn.QueryRow(ctx, "SELECT $1::int -- query "+strconv.Itoa(i), i)
 				var result int
 				require.NoError(t, row.Scan(&result))

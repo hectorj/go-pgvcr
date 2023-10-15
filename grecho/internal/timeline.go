@@ -157,7 +157,7 @@ func (t *Timeline) match(_ context.Context, messages []ClientMessage, strictOrde
 			// send echoes if possible
 			for _, sendEcho := range t.Echoes {
 				// we stopped at the first unconsumed & unreserved echo
-				if sendEcho.consumed == true {
+				if sendEcho.consumed {
 					continue
 				}
 				if sendEcho.reservation == nil {

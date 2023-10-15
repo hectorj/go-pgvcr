@@ -5,7 +5,6 @@ import (
 	"log/slog"
 	"net"
 	"strings"
-	"sync/atomic"
 
 	"golang.org/x/sync/errgroup"
 )
@@ -117,17 +116,3 @@ func (s *startedServer) Stop() error {
 func (s *startedServer) ConnectionString() ConnectionString {
 	return s.connectionString
 }
-
-func wireSessionHandler() func(ctx context.Context) (context.Context, error) {
-	sessionIDCounter := &atomic.Int64{}
-	return func(ctx context.Context) (context.Context, error) {
-		sessionID := sessionIDCounter.Add(1) - 1
-		ctx = context.WithValue(ctx, sessionIDCtxKey, sessionID)
-		return ctx, nil
-	}
-
-}
-
-type ctxKey string
-
-const sessionIDCtxKey ctxKey = "sessionID"
