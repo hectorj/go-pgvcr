@@ -14,8 +14,10 @@ import (
 	"github.com/testcontainers/testcontainers-go/wait"
 )
 
+const defaultEnvVar = "grecho_TARGET_ADDR"
+
 var defaultPostgresBuilder = PostgresBuilderFallback(
-	PostgresBuilderViaEnvVar,
+	PostgresBuilderViaEnvVar(defaultEnvVar),
 	PostgresBuilderViaTestContainers,
 )
 
@@ -38,13 +40,14 @@ func PostgresBuilderFallback(builders ...func(context.Context, Config) (Postgres
 	}
 }
 
-func PostgresBuilderViaEnvVar(_ context.Context, _ Config) (PostgresAddr, error) {
-	const envVar = "grecho_TARGET_ADDR"
-	dsn := os.Getenv(envVar)
-	if dsn == "" {
-		return "", fmt.Errorf("env var %q not found", envVar)
+func PostgresBuilderViaEnvVar(envKey string) func(_ context.Context, _ Config) (PostgresAddr, error) {
+	return func(_ context.Context, _ Config) (PostgresAddr, error) {
+		dsn := os.Getenv(envKey)
+		if dsn == "" {
+			return "", fmt.Errorf("env var %q not found", envKey)
+		}
+		return dsn, nil
 	}
-	return dsn, nil
 }
 
 func PostgresBuilderViaTestContainers(ctx context.Context, cfg Config) (PostgresAddr, error) {

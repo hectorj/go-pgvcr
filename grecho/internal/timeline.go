@@ -25,6 +25,10 @@ func (t *Timeline) Match(
 	messagesChan <-chan ClientMessage,
 	strictOrdering bool,
 ) (Echo, error) {
+	if t.areAllMessagesConsumed() {
+		return Echo{}, io.EOF
+	}
+
 	// if the next sequence doesn't require any client message, send it now
 	unpromptedEcho, found := t.getUnpromptedEcho(lastUsedConnectionID)
 	if found {
@@ -90,6 +94,17 @@ func (t *Timeline) Match(
 	}
 
 	return Echo{}, errors.New("no match found")
+}
+
+func (t *Timeline) areAllMessagesConsumed() bool {
+	t.mutex.Lock()
+	defer t.mutex.Unlock()
+	for _, echo := range t.Echoes {
+		if !echo.consumed {
+			return false
+		}
+	}
+	return true
 }
 
 func (t *Timeline) getUnpromptedEcho(lastUsedConnectionID uint64) (Echo, bool) {

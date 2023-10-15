@@ -32,6 +32,7 @@ func (s *server) recordingServer(ctx context.Context, listener net.Listener) (fu
 	return func() error {
 		defer recorder.Close()
 		eg, ctx := errgroup.WithContext(ctx)
+		defer eg.Wait()
 		connectionCounter := &atomic.Uint64{}
 		for {
 			clientConn, err := listener.Accept()
@@ -131,72 +132,80 @@ func (s *server) recordingServer(ctx context.Context, listener net.Listener) (fu
 						},
 					)
 
-					currentEcho := internal.NewEcho(connectionID)
-					defer func() {
-						if len(currentEcho.Sequences[0].ClientMessages) > 0 || len(currentEcho.Sequences[0].ServerMessages) > 0 {
-							_ = recorder.Record(*currentEcho)
-						}
-					}()
-					for {
-						select {
-						case readyChan <- struct{}{}:
-						default:
-						}
-						select {
-						case readyChan <- struct{}{}:
-						case clientMessage := <-clientChan:
-							recordMessage := clientMessage.Type != types.ClientPassword
-							endEcho := false
-							closeConnection := false
-
-							if recordMessage {
-								currentEcho.AddClientMessage(clientMessage)
-							}
-							if endEcho {
-								err := recorder.Record(*currentEcho)
-								if err != nil {
-									return err
+					eg.Go(
+						func() error {
+							defer clientConn.Close()
+							defer serverConn.Close()
+							currentEcho := internal.NewEcho(connectionID)
+							defer func() {
+								if len(currentEcho.Sequences[0].ClientMessages) > 0 || len(currentEcho.Sequences[0].ServerMessages) > 0 {
+									_ = recorder.Record(*currentEcho)
 								}
-								currentEcho = internal.NewEcho(connectionID)
-							}
-							_, err = clientTee.Flush()
-							if err != nil {
-								return err
-							}
-							if closeConnection {
-								return serverConn.Close()
-							}
-						case serverMessage := <-serverChan:
-							recordMessage := serverMessage.Type != types.ServerAuth
-							endEcho := slices.Contains(
-								[]types.ServerMessage{
-									types.ServerReady,
-									types.ServerErrorResponse,
-								}, serverMessage.Type,
-							)
-							closeConnection := serverMessage.Type == types.ServerErrorResponse
-
-							if recordMessage {
-								currentEcho.AddServerMessage(serverMessage)
-							}
-							if endEcho {
-								err := recorder.Record(*currentEcho)
-								if err != nil {
-									return err
+							}()
+							for {
+								select {
+								case readyChan <- struct{}{}:
+								default:
 								}
-								currentEcho = internal.NewEcho(connectionID)
+								select {
+								case readyChan <- struct{}{}:
+								case clientMessage := <-clientChan:
+									recordMessage := clientMessage.Type != types.ClientPassword
+									endEcho := false
+									closeConnection := false
+
+									if recordMessage {
+										currentEcho.AddClientMessage(clientMessage)
+									}
+									if endEcho {
+										err := recorder.Record(*currentEcho)
+										if err != nil {
+											return err
+										}
+										currentEcho = internal.NewEcho(connectionID)
+									}
+									_, err = clientTee.Flush()
+									if err != nil {
+										return err
+									}
+									if closeConnection {
+										return serverConn.Close()
+									}
+								case serverMessage := <-serverChan:
+									recordMessage := serverMessage.Type != types.ServerAuth
+									endEcho := slices.Contains(
+										[]types.ServerMessage{
+											types.ServerReady,
+											types.ServerErrorResponse,
+										}, serverMessage.Type,
+									)
+									closeConnection := serverMessage.Type == types.ServerErrorResponse
+
+									if recordMessage {
+										currentEcho.AddServerMessage(serverMessage)
+									}
+									if endEcho {
+										err := recorder.Record(*currentEcho)
+										if err != nil {
+											return err
+										}
+										currentEcho = internal.NewEcho(connectionID)
+									}
+									_, err = serverTee.Flush()
+									if err != nil {
+										return err
+									}
+									if closeConnection {
+										return clientConn.Close()
+									}
+								case <-ctx.Done():
+									return ctx.Err()
+								}
 							}
-							_, err = serverTee.Flush()
-							if err != nil {
-								return err
-							}
-							if closeConnection {
-								return clientConn.Close()
-							}
-						case <-ctx.Done():
-							return ctx.Err()
-						}
-					}
+						},
+					)
+
+					return eg.Wait()
 				},
 			)
 		}

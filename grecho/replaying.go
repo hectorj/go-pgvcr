@@ -119,21 +119,23 @@ func (s *server) replayingServer(ctx context.Context, listener net.Listener) (fu
 								}
 							}()
 
-							writer.Start(types.ServerErrorResponse)
-							writer.AddByte('S')
-							writer.AddString("FATAL")
-							writer.AddByte(0)
-							writer.AddByte('V')
-							writer.AddString("FATAL")
-							writer.AddByte(0)
-							writer.AddByte('C')
-							writer.AddString("GRECHO_ERROR")
-							writer.AddByte(0)
-							writer.AddByte('M')
-							writer.AddString(fmt.Sprintf("grecho: %s", err.Error()))
-							writer.AddByte(0)
-							writer.AddByte(0)
-							_ = writer.End()
+							if err != nil {
+								writer.Start(types.ServerErrorResponse)
+								writer.AddByte('S')
+								writer.AddString("FATAL")
+								writer.AddByte(0)
+								writer.AddByte('V')
+								writer.AddString("FATAL")
+								writer.AddByte(0)
+								writer.AddByte('C')
+								writer.AddString("GRECHO_ERROR")
+								writer.AddByte(0)
+								writer.AddByte('M')
+								writer.AddString(fmt.Sprintf("grecho: %s", err.Error()))
+								writer.AddByte(0)
+								writer.AddByte(0)
+								_ = writer.End()
+							}
 
 							return err
 						},

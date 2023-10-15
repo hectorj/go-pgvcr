@@ -22,26 +22,17 @@ type testStruct struct {
 func TestRun_Tx(t *testing.T) {
 	ctx, cancelFn := context.WithCancel(context.Background())
 	t.Cleanup(cancelFn)
+	echoFilePath := "testdata/" + t.Name() + ".grecho.jsonl"
 	recordingServer := NewServer(
 		Config{
-			EchoFilePath: "testdata/echo_tx.jsonl",
+			EchoFilePath: echoFilePath,
 			IsRecording:  ForceRecording,
-			// Logger: slog.New(slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{
-			//	AddSource:   true,
-			//	Level:       slog.LevelDebug,
-			//	ReplaceAttr: nil,
-			// })),
 		},
 	)
 	replayingServer := NewServer(
 		Config{
-			EchoFilePath: "testdata/echo_tx.jsonl",
+			EchoFilePath: echoFilePath,
 			IsRecording:  ForceReplaying,
-			// Logger: slog.New(slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{
-			//	AddSource:   true,
-			//	Level:       slog.LevelDebug,
-			//	ReplaceAttr: nil,
-			// })),
 		},
 	)
 
@@ -95,20 +86,7 @@ func TestRun_Tx(t *testing.T) {
 func TestRun_Concurrency(t *testing.T) {
 	ctx, cancelFn := context.WithCancel(context.Background())
 	t.Cleanup(cancelFn)
-	server, err := NewServer(
-		Config{
-			EchoFilePath: "testdata/echo_concurrency.jsonl",
-			// Logger: slog.New(slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{
-			//	AddSource:   true,
-			//	Level:       slog.LevelDebug,
-			//	ReplaceAttr: nil,
-			// })),
-		},
-	).Start(ctx)
-	require.NoError(t, err)
-
-	db, err := pgxpool.New(ctx, server.ConnectionString())
-	require.NoError(t, err)
+	db := NewPgxTestingServer(t)
 
 	eg, ctx := errgroup.WithContext(ctx)
 	for i := 0; i < 10; i++ {
@@ -133,22 +111,9 @@ func TestRun_Concurrency(t *testing.T) {
 func TestRun_CopyFrom(t *testing.T) {
 	ctx, cancelFn := context.WithCancel(context.Background())
 	t.Cleanup(cancelFn)
-	server, err := NewServer(
-		Config{
-			EchoFilePath: "testdata/echo_copyfrom.jsonl",
-			// Logger: slog.New(slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{
-			//	AddSource:   true,
-			//	Level:       slog.LevelDebug,
-			//	ReplaceAttr: nil,
-			// })),
-		},
-	).Start(ctx)
-	require.NoError(t, err)
+	db := NewPgxTestingServer(t)
 
-	db, err := pgxpool.New(ctx, server.ConnectionString())
-	require.NoError(t, err)
-
-	_, err = db.Exec(ctx, `CREATE TABLE t (id serial PRIMARY KEY, data int[] NOT NULL)`)
+	_, err := db.Exec(ctx, `CREATE TABLE t (id serial PRIMARY KEY, data int[] NOT NULL)`)
 	require.NoError(t, err)
 
 	rowsCount, err := db.CopyFrom(
@@ -177,20 +142,7 @@ func TestRun_CopyFrom(t *testing.T) {
 func TestRun_Notify(t *testing.T) {
 	ctx, cancelFn := context.WithCancel(context.Background())
 	t.Cleanup(cancelFn)
-	server, err := NewServer(
-		Config{
-			EchoFilePath: "testdata/echo_notify.jsonl",
-			// Logger: slog.New(slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{
-			//	AddSource:   true,
-			//	Level:       slog.LevelDebug,
-			//	ReplaceAttr: nil,
-			// })),
-		},
-	).Start(ctx)
-	require.NoError(t, err)
-
-	db, err := pgxpool.New(ctx, server.ConnectionString())
-	require.NoError(t, err)
+	db := NewPgxTestingServer(t)
 
 	poolConn, err := db.Acquire(ctx)
 	require.NoError(t, err)
