@@ -53,7 +53,7 @@ func (s *server) Start(ctx context.Context) (StartedServer, error) {
 
 	listener := s.cfg.Listener
 	if listener == nil {
-		listener, err = net.Listen("tcp", "127.0.0.1:")
+		listener, err = net.Listen("tcp", "localhost:")
 		if err != nil {
 			cancelFn()
 			return nil, err
