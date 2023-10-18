@@ -39,8 +39,6 @@ func (s *server) recordingServer(ctx context.Context, listener net.Listener) (fu
 
 	return func() error {
 		defer recorder.Close()
-		eg, ctx := errgroup.WithContext(ctx)
-		defer eg.Wait() //nolint:errcheck // FIXME
 		connectionCounter := &atomic.Uint64{}
 		for {
 			clientConn, err := listener.Accept()
@@ -49,8 +47,8 @@ func (s *server) recordingServer(ctx context.Context, listener net.Listener) (fu
 			}
 			connectionID := connectionCounter.Add(1)
 
-			eg.Go(
-				func() error {
+			go func() {
+				err := func() error {
 					eg, ctx := errgroup.WithContext(ctx)
 					serverConn, err := net.Dial("tcp", targetHost)
 					if err != nil {
@@ -214,8 +212,13 @@ func (s *server) recordingServer(ctx context.Context, listener net.Listener) (fu
 					)
 
 					return eg.Wait()
-				},
-			)
+				}()
+
+				if err != nil {
+					s.cfg.Logger.ErrorContext(ctx, err.Error())
+				}
+			}()
+
 		}
 	}, newConnectionString, nil
 }

@@ -80,7 +80,8 @@ func (s *server) Start(ctx context.Context) (StartedServer, error) {
 	eg.Go(
 		func() error {
 			<-ctx.Done()
-			return listener.Close()
+			_ = listener.Close()
+			return nil
 		},
 	)
 
