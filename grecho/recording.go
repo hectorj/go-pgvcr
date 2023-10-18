@@ -7,6 +7,7 @@ import (
 	"errors"
 	"io"
 	"net"
+	"net/url"
 	"os"
 	"sync"
 	"sync/atomic"
@@ -18,16 +19,23 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-func (s *server) recordingServer(ctx context.Context, listener net.Listener) (func() error, error) {
+func (s *server) recordingServer(ctx context.Context, listener net.Listener) (func() error, ConnectionString, error) {
 	recorder, err := newEchoRecorder(s.cfg.EchoFilePath)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
-	addr, err := s.cfg.RealPostgresBuilder(ctx, s.cfg)
+	connectionString, err := s.cfg.RealPostgresBuilder(ctx, s.cfg)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
+	targetURL, err := url.Parse(connectionString)
+	if err != nil {
+		return nil, "", err
+	}
+	targetHost := targetURL.Host
+	targetURL.Host = listener.Addr().String()
+	newConnectionString := targetURL.String()
 
 	return func() error {
 		defer recorder.Close()
@@ -44,7 +52,7 @@ func (s *server) recordingServer(ctx context.Context, listener net.Listener) (fu
 			eg.Go(
 				func() error {
 					eg, ctx := errgroup.WithContext(ctx)
-					serverConn, err := net.Dial("tcp", addr)
+					serverConn, err := net.Dial("tcp", targetHost)
 					if err != nil {
 						return err
 					}
@@ -209,7 +217,7 @@ func (s *server) recordingServer(ctx context.Context, listener net.Listener) (fu
 				},
 			)
 		}
-	}, nil
+	}, newConnectionString, nil
 }
 
 func newEchoRecorder(echoFilePath string) (*echoRecorder, error) {

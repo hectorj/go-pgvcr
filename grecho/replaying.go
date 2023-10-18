@@ -16,13 +16,14 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-func (s *server) replayingServer(ctx context.Context, listener net.Listener) (func() error, error) {
+func (s *server) replayingServer(ctx context.Context, listener net.Listener) (func() error, ConnectionString, error) {
 	timeline, err := readEchoFile(s.cfg.EchoFilePath)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	strictOrdering := s.cfg.QueryOrderValidationStrategy == QueryOrderValidationStrategyStrict
+	connectionString := "postgresql://user:password@" + listener.Addr().String() + "/db?sslmode=disable"
 
 	return func() error {
 		eg, ctx := errgroup.WithContext(ctx)
@@ -147,7 +148,7 @@ func (s *server) replayingServer(ctx context.Context, listener net.Listener) (fu
 				},
 			)
 		}
-	}, nil
+	}, connectionString, nil
 }
 
 func readEchoFile(echoFilePath string) (*internal.Timeline, error) {

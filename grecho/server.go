@@ -62,11 +62,14 @@ func (s *server) Start(ctx context.Context) (StartedServer, error) {
 
 	eg, ctx := errgroup.WithContext(ctx)
 
-	var serveFunc func() error
+	var (
+		serveFunc        func() error
+		connectionString ConnectionString
+	)
 	if isRecording {
-		serveFunc, err = s.recordingServer(ctx, listener)
+		serveFunc, connectionString, err = s.recordingServer(ctx, listener)
 	} else {
-		serveFunc, err = s.replayingServer(ctx, listener)
+		serveFunc, connectionString, err = s.replayingServer(ctx, listener)
 	}
 	if err != nil {
 		cancelFn()
@@ -83,7 +86,7 @@ func (s *server) Start(ctx context.Context) (StartedServer, error) {
 
 	return &startedServer{
 		eg:               eg,
-		connectionString: "postgresql://user:password@" + listener.Addr().String() + "/db?sslmode=disable",
+		connectionString: connectionString,
 		cancelFn:         cancelFn,
 	}, nil
 }

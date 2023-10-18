@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"net"
 	"os"
 	"time"
 
@@ -14,20 +13,18 @@ import (
 	"github.com/testcontainers/testcontainers-go/wait"
 )
 
-const defaultEnvVar = "grecho_TARGET_ADDR"
+const defaultEnvVar = "GRECHO_CONNECTION_STRING"
 
 var defaultPostgresBuilder = PostgresBuilderFallback(
 	PostgresBuilderViaEnvVar(defaultEnvVar),
 	PostgresBuilderViaTestContainers,
 )
 
-type PostgresAddr = string
-
-func PostgresBuilderFallback(builders ...func(context.Context, Config) (PostgresAddr, error)) func(
+func PostgresBuilderFallback(builders ...func(context.Context, Config) (ConnectionString, error)) func(
 	context.Context,
 	Config,
-) (PostgresAddr, error) {
-	return func(ctx context.Context, cfg Config) (PostgresAddr, error) {
+) (ConnectionString, error) {
+	return func(ctx context.Context, cfg Config) (ConnectionString, error) {
 		var errs error
 		for _, builder := range builders {
 			cs, err := builder(ctx, cfg)
@@ -40,8 +37,8 @@ func PostgresBuilderFallback(builders ...func(context.Context, Config) (Postgres
 	}
 }
 
-func PostgresBuilderViaEnvVar(envKey string) func(_ context.Context, _ Config) (PostgresAddr, error) {
-	return func(_ context.Context, _ Config) (PostgresAddr, error) {
+func PostgresBuilderViaEnvVar(envKey string) func(_ context.Context, _ Config) (ConnectionString, error) {
+	return func(_ context.Context, _ Config) (ConnectionString, error) {
 		dsn := os.Getenv(envKey)
 		if dsn == "" {
 			return "", fmt.Errorf("env var %q not found", envKey)
@@ -50,7 +47,7 @@ func PostgresBuilderViaEnvVar(envKey string) func(_ context.Context, _ Config) (
 	}
 }
 
-func PostgresBuilderViaTestContainers(ctx context.Context, cfg Config) (PostgresAddr, error) {
+func PostgresBuilderViaTestContainers(ctx context.Context, cfg Config) (ConnectionString, error) {
 	postgresContainer, err := postgres.RunContainer(
 		ctx,
 		testcontainers.CustomizeRequest(
@@ -75,15 +72,5 @@ func PostgresBuilderViaTestContainers(ctx context.Context, cfg Config) (Postgres
 		return "", err
 	}
 
-	containerPort, err := postgresContainer.MappedPort(ctx, "5432/tcp")
-	if err != nil {
-		return "", err
-	}
-
-	host, err := postgresContainer.Host(ctx)
-	if err != nil {
-		return "", err
-	}
-
-	return net.JoinHostPort(host, containerPort.Port()), nil
+	return postgresContainer.ConnectionString(ctx, "sslmode=disable")
 }
