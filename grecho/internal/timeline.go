@@ -24,9 +24,14 @@ func (t *Timeline) Match(
 	lastUsedConnectionID uint64,
 	messagesChan <-chan ClientMessage,
 	strictOrdering bool,
+	isConnectionStart bool,
 ) (Echo, error) {
 	if t.areAllMessagesConsumed() {
 		return Echo{}, io.EOF
+	}
+
+	if isConnectionStart {
+		return t.getFreshestConnectionStart()
 	}
 
 	// if the next sequence doesn't require any client message, send it now
@@ -42,24 +47,51 @@ func (t *Timeline) Match(
 		reservation    <-chan Echo
 		isPartialMatch bool
 	)
-
-	for ok && len(messages) == 0 {
-		select {
-		case <-ctx.Done():
-			return Echo{}, ctx.Err()
-		case message, ok = <-messagesChan:
-			if ok {
-				messages = append(messages, message)
-				reservation, isPartialMatch = t.match(ctx, messages, strictOrdering)
-				if !isPartialMatch {
-					return Echo{}, errors.New("no match found")
+	{
+		ctx, cancelFn := context.WithTimeout(ctx, 10*time.Second)
+		defer cancelFn()
+		for ok && len(messages) == 0 {
+			select {
+			case <-ctx.Done():
+				err := ctx.Err()
+				if errors.Is(err, context.DeadlineExceeded) {
+					err = errors.New("timeout, possibly because your have more connections than expected")
 				}
-			}
-		// special case when no message has been received yet: we poll for an unprompted echo to become ready
-		case <-time.After(time.Millisecond * 100):
-			unpromptedEcho, found = t.getUnpromptedEcho(lastUsedConnectionID)
-			if found {
-				return unpromptedEcho, nil
+				return Echo{}, err
+			case message, ok = <-messagesChan:
+				if ok {
+					if string(message.Content) == "-- ping\u0000" {
+						return Echo{
+							ConnectionID:      0,
+							IsConnectionStart: false,
+							Sequences: []*Sequence{
+								{
+									ServerMessages: []ServerMessage{
+										{
+											Type:    73,
+											Content: []byte{},
+										},
+										{
+											Type:    90,
+											Content: []byte("I"),
+										},
+									},
+								},
+							},
+						}, nil
+					}
+					messages = append(messages, message)
+					reservation, isPartialMatch = t.match(ctx, messages, strictOrdering)
+					if !isPartialMatch {
+						return Echo{}, errors.New("no match found")
+					}
+				}
+			// special case when no message has been received yet: we poll for an unprompted echo to become ready
+			case <-time.After(time.Millisecond * 100):
+				unpromptedEcho, found = t.getUnpromptedEcho(lastUsedConnectionID)
+				if found {
+					return unpromptedEcho, nil
+				}
 			}
 		}
 	}
@@ -79,11 +111,16 @@ func (t *Timeline) Match(
 		}
 
 	}
-
 	if reservation != nil {
+		ctx, cancelFn := context.WithTimeout(ctx, time.Second*10)
+		defer cancelFn()
 		select {
 		case <-ctx.Done():
-			return Echo{}, ctx.Err()
+			err := ctx.Err()
+			if errors.Is(err, context.DeadlineExceeded) {
+				err = errors.New("timeout, possibly because your queries are out-of-order")
+			}
+			return Echo{}, err
 		case echo := <-reservation:
 			return echo, nil
 		}
@@ -111,7 +148,7 @@ func (t *Timeline) getUnpromptedEcho(lastUsedConnectionID uint64) (Echo, bool) {
 	t.mutex.Lock()
 	defer t.mutex.Unlock()
 	for _, echo := range t.Echoes {
-		if echo.consumed {
+		if echo.consumed || echo.Echo.IsConnectionStart {
 			continue
 		}
 		if len(echo.Echo.Sequences[0].ClientMessages) == 0 && (lastUsedConnectionID == 0 || lastUsedConnectionID == echo.Echo.ConnectionID) {
@@ -131,7 +168,7 @@ func (t *Timeline) match(_ context.Context, messages []ClientMessage, strictOrde
 	defer t.mutex.Unlock()
 	isPartialMatch := false
 	for _, echo := range t.Echoes {
-		if echo.consumed || echo.reservation != nil {
+		if echo.consumed || echo.reservation != nil || echo.Echo.IsConnectionStart {
 			continue
 		}
 		recordedMessages := echo.Echo.Sequences[0].ClientMessages
@@ -176,4 +213,21 @@ func (t *Timeline) match(_ context.Context, messages []ClientMessage, strictOrde
 
 	}
 	return nil, isPartialMatch
+}
+
+func (t *Timeline) getFreshestConnectionStart() (Echo, error) {
+	t.mutex.Lock()
+	defer t.mutex.Unlock()
+	var freshest *ConsumableEcho
+	for _, echo := range t.Echoes {
+		if echo.Echo.IsConnectionStart {
+			freshest = echo
+			continue
+		}
+		if !echo.consumed {
+			break
+		}
+	}
+	freshest.consumed = true
+	return freshest.Echo, nil
 }

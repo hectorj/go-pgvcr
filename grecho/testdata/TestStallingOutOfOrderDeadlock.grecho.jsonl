@@ -71,34 +71,8 @@
 				},
 				{
 					"type": 75,
-					"content": "AAAAOG0n25M=",
-					"stringContent": "\u0000\u0000\u00008m'ۓ"
-				},
-				{
-					"type": 90,
-					"content": "SQ==",
-					"stringContent": "I"
-				}
-			]
-		}
-	]
-}
-{
-	"connectionID": 1,
-	"sequences": [
-		{
-			"clientMessages": [
-				{
-					"type": 81,
-					"content": "Q1JFQVRFIFRBQkxFIHQgKGlkIHNlcmlhbCBQUklNQVJZIEtFWSwgZGF0YSBpbnRbXSBOT1QgTlVMTCkA",
-					"stringContent": "CREATE TABLE t (id serial PRIMARY KEY, data int[] NOT NULL)\u0000"
-				}
-			],
-			"serverMessages": [
-				{
-					"type": 67,
-					"content": "Q1JFQVRFIFRBQkxFAA==",
-					"stringContent": "CREATE TABLE\u0000"
+					"content": "AAAAN7ip0uo=",
+					"stringContent": "\u0000\u0000\u00007\ufffd\ufffd\ufffd\ufffd"
 				},
 				{
 					"type": 90,
@@ -116,13 +90,13 @@
 			"clientMessages": [
 				{
 					"type": 80,
-					"content": "c3RtdGNhY2hlXzE5AHNlbGVjdCAiZGF0YSIgZnJvbSAidCIAAAA=",
-					"stringContent": "stmtcache_19\u0000select \"data\" from \"t\"\u0000\u0000\u0000"
+					"content": "c3RtdGNhY2hlXzIyAFNFTEVDVCAxOwAAAA==",
+					"stringContent": "stmtcache_22\u0000SELECT 1;\u0000\u0000\u0000"
 				},
 				{
 					"type": 68,
-					"content": "U3N0bXRjYWNoZV8xOQA=",
-					"stringContent": "Sstmtcache_19\u0000"
+					"content": "U3N0bXRjYWNoZV8yMgA=",
+					"stringContent": "Sstmtcache_22\u0000"
 				},
 				{
 					"type": 83,
@@ -143,95 +117,8 @@
 				},
 				{
 					"type": 84,
-					"content": "AAFkYXRhAAAAQAIAAgAAA+////////8AAA==",
-					"stringContent": "\u0000\u0001data\u0000\u0000\u0000@\u0002\u0000\u0002\u0000\u0000\u0003\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\u0000\u0000"
-				},
-				{
-					"type": 90,
-					"content": "SQ==",
-					"stringContent": "I"
-				}
-			]
-		}
-	]
-}
-{
-	"connectionID": 1,
-	"sequences": [
-		{
-			"clientMessages": [
-				{
-					"type": 81,
-					"content": "Y29weSAidCIgKCAiZGF0YSIgKSBmcm9tIHN0ZGluIGJpbmFyeTsA",
-					"stringContent": "copy \"t\" ( \"data\" ) from stdin binary;\u0000"
-				},
-				{
-					"type": 100,
-					"content": "UEdDT1BZCv8NCgAAAAAAAAAAAAABAAAALAAAAAEAAAAAAAAAFwAAAAMAAAABAAAABAAAAAQAAAAEAAAABAAAAAQAAAACAAEAAAAsAAAAAQAAAAAAAAAXAAAAAwAAAAEAAAAEAAAAAwAAAAQAAAAFAAAABAAAAAIAAQAAACwAAAABAAAAAAAAABcAAAADAAAAAQAAAAQAAAAHAAAABAAAAAcAAAAEAAAABw==",
-					"stringContent": "PGCOPY\n\ufffd\r\n\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0001\u0000\u0000\u0000,\u0000\u0000\u0000\u0001\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0017\u0000\u0000\u0000\u0003\u0000\u0000\u0000\u0001\u0000\u0000\u0000\u0004\u0000\u0000\u0000\u0004\u0000\u0000\u0000\u0004\u0000\u0000\u0000\u0004\u0000\u0000\u0000\u0004\u0000\u0000\u0000\u0002\u0000\u0001\u0000\u0000\u0000,\u0000\u0000\u0000\u0001\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0017\u0000\u0000\u0000\u0003\u0000\u0000\u0000\u0001\u0000\u0000\u0000\u0004\u0000\u0000\u0000\u0003\u0000\u0000\u0000\u0004\u0000\u0000\u0000\u0005\u0000\u0000\u0000\u0004\u0000\u0000\u0000\u0002\u0000\u0001\u0000\u0000\u0000,\u0000\u0000\u0000\u0001\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0017\u0000\u0000\u0000\u0003\u0000\u0000\u0000\u0001\u0000\u0000\u0000\u0004\u0000\u0000\u0000\u0007\u0000\u0000\u0000\u0004\u0000\u0000\u0000\u0007\u0000\u0000\u0000\u0004\u0000\u0000\u0000\u0007"
-				},
-				{
-					"type": 99,
-					"content": "",
-					"stringContent": ""
-				}
-			],
-			"serverMessages": [
-				{
-					"type": 71,
-					"content": "AQABAAE=",
-					"stringContent": "\u0001\u0000\u0001\u0000\u0001"
-				},
-				{
-					"type": 67,
-					"content": "Q09QWSAzAA==",
-					"stringContent": "COPY 3\u0000"
-				},
-				{
-					"type": 90,
-					"content": "SQ==",
-					"stringContent": "I"
-				}
-			]
-		}
-	]
-}
-{
-	"connectionID": 1,
-	"sequences": [
-		{
-			"clientMessages": [
-				{
-					"type": 80,
-					"content": "c3RtdGNhY2hlXzIwAFNFTEVDVCBDT1VOVCgqKSBGUk9NIHQAAAA=",
-					"stringContent": "stmtcache_20\u0000SELECT COUNT(*) FROM t\u0000\u0000\u0000"
-				},
-				{
-					"type": 68,
-					"content": "U3N0bXRjYWNoZV8yMAA=",
-					"stringContent": "Sstmtcache_20\u0000"
-				},
-				{
-					"type": 83,
-					"content": "",
-					"stringContent": ""
-				}
-			],
-			"serverMessages": [
-				{
-					"type": 49,
-					"content": "",
-					"stringContent": ""
-				},
-				{
-					"type": 116,
-					"content": "AAA=",
-					"stringContent": "\u0000\u0000"
-				},
-				{
-					"type": 84,
-					"content": "AAFjb3VudAAAAAAAAAAAAAAUAAj/////AAA=",
-					"stringContent": "\u0000\u0001count\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0014\u0000\u0008\ufffd\ufffd\ufffd\ufffd\u0000\u0000"
+					"content": "AAE/Y29sdW1uPwAAAAAAAAAAAAAXAAT/////AAA=",
+					"stringContent": "\u0000\u0001?column?\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0017\u0000\u0004\ufffd\ufffd\ufffd\ufffd\u0000\u0000"
 				},
 				{
 					"type": 90,
@@ -249,8 +136,8 @@
 			"clientMessages": [
 				{
 					"type": 66,
-					"content": "AHN0bXRjYWNoZV8yMAAAAAAAAAEAAQ==",
-					"stringContent": "\u0000stmtcache_20\u0000\u0000\u0000\u0000\u0000\u0000\u0001\u0000\u0001"
+					"content": "AHN0bXRjYWNoZV8yMgAAAAAAAAEAAQ==",
+					"stringContent": "\u0000stmtcache_22\u0000\u0000\u0000\u0000\u0000\u0000\u0001\u0000\u0001"
 				},
 				{
 					"type": 68,
@@ -276,13 +163,115 @@
 				},
 				{
 					"type": 84,
-					"content": "AAFjb3VudAAAAAAAAAAAAAAUAAj/////AAE=",
-					"stringContent": "\u0000\u0001count\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0014\u0000\u0008\ufffd\ufffd\ufffd\ufffd\u0000\u0001"
+					"content": "AAE/Y29sdW1uPwAAAAAAAAAAAAAXAAT/////AAE=",
+					"stringContent": "\u0000\u0001?column?\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0017\u0000\u0004\ufffd\ufffd\ufffd\ufffd\u0000\u0001"
 				},
 				{
 					"type": 68,
-					"content": "AAEAAAAIAAAAAAAAAAM=",
-					"stringContent": "\u0000\u0001\u0000\u0000\u0000\u0008\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0003"
+					"content": "AAEAAAAEAAAAAQ==",
+					"stringContent": "\u0000\u0001\u0000\u0000\u0000\u0004\u0000\u0000\u0000\u0001"
+				},
+				{
+					"type": 67,
+					"content": "U0VMRUNUIDEA",
+					"stringContent": "SELECT 1\u0000"
+				},
+				{
+					"type": 90,
+					"content": "SQ==",
+					"stringContent": "I"
+				}
+			]
+		}
+	]
+}
+{
+	"connectionID": 1,
+	"sequences": [
+		{
+			"clientMessages": [
+				{
+					"type": 80,
+					"content": "c3RtdGNhY2hlXzIzAFNFTEVDVCAyOwAAAA==",
+					"stringContent": "stmtcache_23\u0000SELECT 2;\u0000\u0000\u0000"
+				},
+				{
+					"type": 68,
+					"content": "U3N0bXRjYWNoZV8yMwA=",
+					"stringContent": "Sstmtcache_23\u0000"
+				},
+				{
+					"type": 83,
+					"content": "",
+					"stringContent": ""
+				}
+			],
+			"serverMessages": [
+				{
+					"type": 49,
+					"content": "",
+					"stringContent": ""
+				},
+				{
+					"type": 116,
+					"content": "AAA=",
+					"stringContent": "\u0000\u0000"
+				},
+				{
+					"type": 84,
+					"content": "AAE/Y29sdW1uPwAAAAAAAAAAAAAXAAT/////AAA=",
+					"stringContent": "\u0000\u0001?column?\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0017\u0000\u0004\ufffd\ufffd\ufffd\ufffd\u0000\u0000"
+				},
+				{
+					"type": 90,
+					"content": "SQ==",
+					"stringContent": "I"
+				}
+			]
+		}
+	]
+}
+{
+	"connectionID": 1,
+	"sequences": [
+		{
+			"clientMessages": [
+				{
+					"type": 66,
+					"content": "AHN0bXRjYWNoZV8yMwAAAAAAAAEAAQ==",
+					"stringContent": "\u0000stmtcache_23\u0000\u0000\u0000\u0000\u0000\u0000\u0001\u0000\u0001"
+				},
+				{
+					"type": 68,
+					"content": "UAA=",
+					"stringContent": "P\u0000"
+				},
+				{
+					"type": 69,
+					"content": "AAAAAAA=",
+					"stringContent": "\u0000\u0000\u0000\u0000\u0000"
+				},
+				{
+					"type": 83,
+					"content": "",
+					"stringContent": ""
+				}
+			],
+			"serverMessages": [
+				{
+					"type": 50,
+					"content": "",
+					"stringContent": ""
+				},
+				{
+					"type": 84,
+					"content": "AAE/Y29sdW1uPwAAAAAAAAAAAAAXAAT/////AAE=",
+					"stringContent": "\u0000\u0001?column?\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0017\u0000\u0004\ufffd\ufffd\ufffd\ufffd\u0000\u0001"
+				},
+				{
+					"type": 68,
+					"content": "AAEAAAAEAAAAAg==",
+					"stringContent": "\u0000\u0001\u0000\u0000\u0000\u0004\u0000\u0000\u0000\u0002"
 				},
 				{
 					"type": 67,

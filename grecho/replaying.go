@@ -72,8 +72,16 @@ func (s *server) replayingServer(ctx context.Context, listener net.Listener) (fu
 				defer conn.Close()
 				err := func() error {
 					var lastUsedConnectionID uint64
+					isConnectionStart := true
 					for {
-						echo, err := timeline.Match(ctx, lastUsedConnectionID, messagesChan, strictOrdering)
+						echo, err := timeline.Match(
+							ctx,
+							lastUsedConnectionID,
+							messagesChan,
+							strictOrdering,
+							isConnectionStart,
+						)
+						isConnectionStart = false
 						if err != nil {
 							if errors.Is(io.EOF, err) {
 								return nil

@@ -143,6 +143,7 @@ func (s *server) recordingServer(ctx context.Context, listener net.Listener) (fu
 							defer clientConn.Close()
 							defer serverConn.Close()
 							currentEcho := internal.NewEcho(connectionID)
+							currentEcho.IsConnectionStart = true
 							defer func() {
 								if len(currentEcho.Sequences[0].ClientMessages) > 0 || len(currentEcho.Sequences[0].ServerMessages) > 0 {
 									_ = recorder.Record(*currentEcho)
@@ -157,25 +158,13 @@ func (s *server) recordingServer(ctx context.Context, listener net.Listener) (fu
 								case readyChan <- struct{}{}:
 								case clientMessage := <-clientChan:
 									recordMessage := clientMessage.Type != types.ClientPassword
-									endEcho := false
-									closeConnection := false
 
 									if recordMessage {
 										currentEcho.AddClientMessage(clientMessage)
 									}
-									if endEcho {
-										err := recorder.Record(*currentEcho)
-										if err != nil {
-											return err
-										}
-										currentEcho = internal.NewEcho(connectionID)
-									}
 									_, err = clientTee.Flush()
 									if err != nil {
 										return err
-									}
-									if closeConnection {
-										return serverConn.Close()
 									}
 								case serverMessage := <-serverChan:
 									recordMessage := serverMessage.Type != types.ServerAuth
@@ -191,9 +180,11 @@ func (s *server) recordingServer(ctx context.Context, listener net.Listener) (fu
 										currentEcho.AddServerMessage(serverMessage)
 									}
 									if endEcho {
-										err := recorder.Record(*currentEcho)
-										if err != nil {
-											return err
+										if !(len(currentEcho.Sequences[0].ClientMessages) > 0 && string(currentEcho.Sequences[0].ClientMessages[0].Content) == "-- ping\u0000") {
+											err := recorder.Record(*currentEcho)
+											if err != nil {
+												return err
+											}
 										}
 										currentEcho = internal.NewEcho(connectionID)
 									}

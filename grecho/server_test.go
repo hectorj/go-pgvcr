@@ -160,3 +160,219 @@ func TestRun_Notify(t *testing.T) {
 
 	require.Equal(t, "testPayload", notif.Payload)
 }
+
+func TestNoMatch(t *testing.T) {
+	ctx, cancelFn := context.WithCancel(context.Background())
+	t.Cleanup(cancelFn)
+	echoFilePath := "testdata/" + t.Name() + ".grecho.jsonl"
+
+	server, err := NewServer(
+		Config{
+			EchoFilePath: echoFilePath,
+		},
+	).Start(ctx)
+	require.NoError(t, err)
+
+	defer func() { require.NoError(t, server.Stop()) }()
+
+	db, err := pgxpool.New(ctx, server.ConnectionString())
+	require.NoError(t, err)
+
+	var result int
+	if server.IsRecording() {
+		row := db.QueryRow(ctx, "SELECT 1;")
+		require.NoError(t, row.Scan(&result))
+		t.SkipNow()
+	} else {
+		row := db.QueryRow(ctx, "SELECT 2;")
+		require.Error(t, row.Scan(&result))
+	}
+}
+
+func TestStallingOutOfOrderDeadlock(t *testing.T) {
+	ctx, cancelFn := context.WithCancel(context.Background())
+	t.Cleanup(cancelFn)
+	echoFilePath := "testdata/" + t.Name() + ".grecho.jsonl"
+
+	server, err := NewServer(
+		Config{
+			EchoFilePath:                 echoFilePath,
+			QueryOrderValidationStrategy: QueryOrderValidationStrategyStalling,
+		},
+	).Start(ctx)
+	require.NoError(t, err)
+
+	defer func() { require.NoError(t, server.Stop()) }()
+
+	db, err := pgxpool.New(ctx, server.ConnectionString())
+	require.NoError(t, err)
+
+	var result int
+	if server.IsRecording() {
+		row := db.QueryRow(ctx, "SELECT 1;")
+		require.NoError(t, row.Scan(&result))
+		row = db.QueryRow(ctx, "SELECT 2;")
+		require.NoError(t, row.Scan(&result))
+		t.SkipNow()
+	} else {
+		startTime := time.Now()
+		row := db.QueryRow(ctx, "SELECT 2;")
+		require.Error(t, row.Scan(&result))
+		require.Less(t, time.Since(startTime), time.Second*15)
+	}
+}
+
+func TestStallingOutOfOrderEventually(t *testing.T) {
+	ctx, cancelFn := context.WithCancel(context.Background())
+	t.Cleanup(cancelFn)
+	echoFilePath := "testdata/" + t.Name() + ".grecho.jsonl"
+
+	server, err := NewServer(
+		Config{
+			EchoFilePath:                 echoFilePath,
+			QueryOrderValidationStrategy: QueryOrderValidationStrategyStalling,
+		},
+	).Start(ctx)
+	require.NoError(t, err)
+
+	defer func() { require.NoError(t, server.Stop()) }()
+
+	db, err := pgxpool.New(ctx, server.ConnectionString())
+	require.NoError(t, err)
+
+	var result int
+	conn1, err := db.Acquire(ctx)
+	require.NoError(t, err)
+	defer conn1.Release()
+	conn2, err := db.Acquire(ctx)
+	require.NoError(t, err)
+	defer conn2.Release()
+	if server.IsRecording() {
+		row := conn1.QueryRow(ctx, "SELECT 1;")
+		require.NoError(t, row.Scan(&result))
+		row = conn2.QueryRow(ctx, "SELECT 2;")
+		require.NoError(t, row.Scan(&result))
+		t.SkipNow()
+	} else {
+		go func() {
+			time.Sleep(3 * time.Second)
+			var result int
+			row := conn1.QueryRow(ctx, "SELECT 1;")
+			require.NoError(t, row.Scan(&result))
+		}()
+		row := conn2.QueryRow(ctx, "SELECT 2;")
+		require.NoError(t, row.Scan(&result))
+
+	}
+}
+
+func TestStrictOutOfOrderDeadlock(t *testing.T) {
+	ctx, cancelFn := context.WithCancel(context.Background())
+	t.Cleanup(cancelFn)
+	echoFilePath := "testdata/" + t.Name() + ".grecho.jsonl"
+
+	server, err := NewServer(
+		Config{
+			EchoFilePath:                 echoFilePath,
+			QueryOrderValidationStrategy: QueryOrderValidationStrategyStrict,
+		},
+	).Start(ctx)
+	require.NoError(t, err)
+
+	defer func() { require.NoError(t, server.Stop()) }()
+
+	db, err := pgxpool.New(ctx, server.ConnectionString())
+	require.NoError(t, err)
+
+	var result int
+	if server.IsRecording() {
+		row := db.QueryRow(ctx, "SELECT 1;")
+		require.NoError(t, row.Scan(&result))
+		row = db.QueryRow(ctx, "SELECT 2;")
+		require.NoError(t, row.Scan(&result))
+		t.SkipNow()
+	} else {
+		startTime := time.Now()
+		row := db.QueryRow(ctx, "SELECT 2;")
+		require.Error(t, row.Scan(&result))
+		require.Less(t, time.Since(startTime), time.Second)
+	}
+}
+
+func TestExtraConnection(t *testing.T) {
+	ctx, cancelFn := context.WithCancel(context.Background())
+	t.Cleanup(cancelFn)
+	echoFilePath := "testdata/" + t.Name() + ".grecho.jsonl"
+
+	server, err := NewServer(
+		Config{
+			EchoFilePath:                 echoFilePath,
+			QueryOrderValidationStrategy: QueryOrderValidationStrategyStalling,
+		},
+	).Start(ctx)
+	require.NoError(t, err)
+
+	defer func() { require.NoError(t, server.Stop()) }()
+
+	db, err := pgxpool.New(ctx, server.ConnectionString())
+	require.NoError(t, err)
+
+	var result int
+	conn1, err := db.Acquire(ctx)
+	require.NoError(t, err)
+	defer conn1.Release()
+	if server.IsRecording() {
+		row := conn1.QueryRow(ctx, "SELECT 1;")
+		require.NoError(t, row.Scan(&result))
+		row = conn1.QueryRow(ctx, "SELECT 2;")
+		require.NoError(t, row.Scan(&result))
+		t.SkipNow()
+	} else {
+		conn2, err := db.Acquire(ctx)
+		require.NoError(t, err)
+		defer conn2.Release()
+
+		row := conn1.QueryRow(ctx, "SELECT 1;")
+		require.NoError(t, row.Scan(&result))
+		row = conn2.QueryRow(ctx, "SELECT 2;")
+		require.NoError(t, row.Scan(&result))
+
+	}
+}
+
+func TestExtraPings(t *testing.T) {
+	ctx, cancelFn := context.WithCancel(context.Background())
+	t.Cleanup(cancelFn)
+	echoFilePath := "testdata/" + t.Name() + ".grecho.jsonl"
+
+	server, err := NewServer(
+		Config{
+			EchoFilePath:                 echoFilePath,
+			QueryOrderValidationStrategy: QueryOrderValidationStrategyStalling,
+		},
+	).Start(ctx)
+	require.NoError(t, err)
+
+	defer func() { require.NoError(t, server.Stop()) }()
+
+	db, err := pgxpool.New(ctx, server.ConnectionString())
+	require.NoError(t, err)
+
+	var result int
+	if server.IsRecording() {
+		row := db.QueryRow(ctx, "SELECT 1;")
+		require.NoError(t, row.Scan(&result))
+		row = db.QueryRow(ctx, "SELECT 2;")
+		require.NoError(t, row.Scan(&result))
+		t.SkipNow()
+	} else {
+		row := db.QueryRow(ctx, "SELECT 1;")
+		require.NoError(t, row.Scan(&result))
+		require.NoError(t, db.Ping(ctx))
+		require.NoError(t, db.Ping(ctx))
+		require.NoError(t, db.Ping(ctx))
+		row = db.QueryRow(ctx, "SELECT 2;")
+		require.NoError(t, row.Scan(&result))
+
+	}
+}

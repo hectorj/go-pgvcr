@@ -9,13 +9,14 @@ import (
 )
 
 type Echo struct {
-	ConnectionID uint64      `json:"connectionID"`
-	Sequences    []*Sequence `json:"sequences"`
+	ConnectionID      uint64      `json:"connectionID"`
+	IsConnectionStart bool        `json:"isConnectionStart,omitempty"`
+	Sequences         []*Sequence `json:"sequences"`
 }
 
 type Sequence struct {
-	ClientMessages []ClientMessage `json:"clientMessages"`
-	ServerMessages []ServerMessage `json:"serverMessages"`
+	ClientMessages []ClientMessage `json:"clientMessages,omitempty"`
+	ServerMessages []ServerMessage `json:"serverMessages,omitempty"`
 }
 
 func NewEcho(sessionID uint64) *Echo {

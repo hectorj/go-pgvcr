@@ -1,8 +1,8 @@
 {
 	"connectionID": 1,
+	"isConnectionStart": true,
 	"sequences": [
 		{
-			"clientMessages": null,
 			"serverMessages": [
 				{
 					"type": 83,
@@ -71,8 +71,8 @@
 				},
 				{
 					"type": 75,
-					"content": "AAAAOI6dGsU=",
-					"stringContent": "\u0000\u0000\u00008\ufffd\ufffd\u001a\ufffd"
+					"content": "AAAAOAyx6Kk=",
+					"stringContent": "\u0000\u0000\u00008\u000c\ufffd\ufffd\ufffd"
 				},
 				{
 					"type": 90,
@@ -111,9 +111,9 @@
 }
 {
 	"connectionID": 2,
+	"isConnectionStart": true,
 	"sequences": [
 		{
-			"clientMessages": null,
 			"serverMessages": [
 				{
 					"type": 83,
@@ -182,8 +182,8 @@
 				},
 				{
 					"type": 75,
-					"content": "AAAAOe8ZA5Y=",
-					"stringContent": "\u0000\u0000\u00009\ufffd\u0019\u0003\ufffd"
+					"content": "AAAAOR3wNd4=",
+					"stringContent": "\u0000\u0000\u00009\u001d\ufffd5\ufffd"
 				},
 				{
 					"type": 90,
@@ -215,21 +215,6 @@
 					"type": 90,
 					"content": "SQ==",
 					"stringContent": "I"
-				}
-			]
-		}
-	]
-}
-{
-	"connectionID": 1,
-	"sequences": [
-		{
-			"clientMessages": null,
-			"serverMessages": [
-				{
-					"type": 65,
-					"content": "AAAAOW15Y2hhbm5lbAB0ZXN0UGF5bG9hZAA=",
-					"stringContent": "\u0000\u0000\u00009mychannel\u0000testPayload\u0000"
 				}
 			]
 		}

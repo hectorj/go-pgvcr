@@ -89,6 +89,7 @@ func (s *server) Start(ctx context.Context) (StartedServer, error) {
 		eg:               eg,
 		connectionString: connectionString,
 		cancelFn:         cancelFn,
+		isRecording:      isRecording,
 	}, nil
 }
 
@@ -96,12 +97,14 @@ type startedServer struct {
 	connectionString ConnectionString
 	eg               *errgroup.Group
 	cancelFn         context.CancelFunc
+	isRecording      bool
 }
 
 type StartedServer interface {
 	Wait() error
 	Stop() error
 	ConnectionString() ConnectionString
+	IsRecording() bool
 }
 
 func (s *startedServer) Wait() error {
@@ -115,6 +118,10 @@ func (s *startedServer) Stop() error {
 		return nil
 	}
 	return err
+}
+
+func (s *startedServer) IsRecording() bool {
+	return s.isRecording
 }
 
 func (s *startedServer) ConnectionString() ConnectionString {

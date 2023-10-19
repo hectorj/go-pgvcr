@@ -1,8 +1,8 @@
 {
 	"connectionID": 1,
+	"isConnectionStart": true,
 	"sequences": [
 		{
-			"clientMessages": null,
 			"serverMessages": [
 				{
 					"type": 83,
@@ -71,34 +71,8 @@
 				},
 				{
 					"type": 75,
-					"content": "AAAAOAjZtLE=",
-					"stringContent": "\u0000\u0000\u00008\u0008ٴ\ufffd"
-				},
-				{
-					"type": 90,
-					"content": "SQ==",
-					"stringContent": "I"
-				}
-			]
-		}
-	]
-}
-{
-	"connectionID": 1,
-	"sequences": [
-		{
-			"clientMessages": [
-				{
-					"type": 81,
-					"content": "LS0gcGluZwA=",
-					"stringContent": "-- ping\u0000"
-				}
-			],
-			"serverMessages": [
-				{
-					"type": 73,
-					"content": "",
-					"stringContent": ""
+					"content": "AAAAN4knXeQ=",
+					"stringContent": "\u0000\u0000\u00007\ufffd']\ufffd"
 				},
 				{
 					"type": 90,
@@ -163,9 +137,9 @@
 }
 {
 	"connectionID": 2,
+	"isConnectionStart": true,
 	"sequences": [
 		{
-			"clientMessages": null,
 			"serverMessages": [
 				{
 					"type": 83,
@@ -234,8 +208,8 @@
 				},
 				{
 					"type": 75,
-					"content": "AAAAOYdNZtw=",
-					"stringContent": "\u0000\u0000\u00009\ufffdMf\ufffd"
+					"content": "AAAAOEJqaU8=",
+					"stringContent": "\u0000\u0000\u00008BjiO"
 				},
 				{
 					"type": 90,
