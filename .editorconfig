@@ -11,5 +11,7 @@ end_of_line = lf
 indent_style = space
 indent_size = 2
 
-[grecho/internal/reader/LICENSE]
-indent_style = unset
+[*.gob]
+insert_final_newline = unset
+end_of_line = unset
+trim_trailing_whitespace = unset
