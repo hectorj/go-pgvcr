@@ -1,4 +1,4 @@
-package grecho
+package pgvcr
 
 import (
 	"context"
@@ -12,7 +12,7 @@ func NewPgxTestingServer(t *testing.T, options ...func(config *Config)) *pgxpool
 	ctx, cancelFn := context.WithCancel(context.Background())
 	t.Cleanup(cancelFn)
 	cfg := Config{
-		EchoFilePath: "testdata/" + t.Name() + ".grecho.jsonl",
+		EchoFilePath: "testdata/" + t.Name() + ".pgvcr.gob",
 	}
 	for _, option := range options {
 		option(&cfg)

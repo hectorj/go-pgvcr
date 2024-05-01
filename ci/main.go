@@ -58,7 +58,7 @@ func build(ctx context.Context) error {
 		WithEnvVariable("POSTGRES_PASSWORD", "password")
 
 	tests := golangWithDependencies.WithServiceBinding("postgres", postgres).
-		WithEnvVariable("grecho_TARGET_ADDR", "postgres://user:password@postgres:5432/db?sslmode=disable").
+		WithEnvVariable("PGVCR_CONNECTION_STRING", "postgres://user:password@postgres:5432/db?sslmode=disable").
 		WithDirectory("/src", src).
 		WithExec([]string{"go", "test", "./..."})
 

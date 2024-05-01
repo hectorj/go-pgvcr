@@ -1,23 +1,15 @@
-package grecho
+package pgvcr
 
 import (
 	"context"
 	"errors"
 	"fmt"
-	"log/slog"
-	"os"
-	"time"
-
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
 	"github.com/testcontainers/testcontainers-go/wait"
-)
-
-const defaultEnvVar = "GRECHO_CONNECTION_STRING"
-
-var defaultPostgresBuilder = PostgresBuilderFallback(
-	PostgresBuilderViaEnvVar(defaultEnvVar),
-	PostgresBuilderViaTestContainers,
+	"log/slog"
+	"os"
+	"time"
 )
 
 func PostgresBuilderFallback(builders ...func(context.Context, Config) (ConnectionString, error)) func(

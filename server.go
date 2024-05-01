@@ -1,22 +1,16 @@
-package grecho
+package pgvcr
 
 import (
+	"braces.dev/errtrace"
 	"context"
+	"golang.org/x/sync/errgroup"
 	"log/slog"
 	"net"
 	"strings"
-
-	"golang.org/x/sync/errgroup"
 )
-
-type ConnectionString = string
 
 type server struct {
 	cfg Config
-}
-
-type Server interface {
-	Start(ctx context.Context) (StartedServer, error)
 }
 
 func NewServer(cfg Config) Server {
@@ -33,16 +27,19 @@ func NewServer(cfg Config) Server {
 		cfg.QueryOrderValidationStrategy = defaultQueryOrderValidationStrategy
 	}
 	if cfg.Logger == nil {
-		cfg.Logger = slog.New(noopHandler{})
+		cfg.Logger = slog.New(NoopHandler{})
 	}
-	cfg.Logger = cfg.Logger.WithGroup("grecho")
+	cfg.Logger = cfg.Logger.WithGroup("pgvcr")
 
 	return &server{
 		cfg: cfg,
 	}
 }
 
-// Start is a non-blocking function which starts the server.
+type Server interface {
+	Start(ctx context.Context) (StartedServer, error)
+}
+
 func (s *server) Start(ctx context.Context) (StartedServer, error) {
 	ctx, cancelFn := context.WithCancel(ctx)
 	isRecording, err := s.cfg.IsRecording(ctx, s.cfg)
@@ -59,6 +56,12 @@ func (s *server) Start(ctx context.Context) (StartedServer, error) {
 			return nil, err
 		}
 	}
+	_ = context.AfterFunc(ctx, func() {
+		err := listener.Close()
+		if err != nil {
+			s.cfg.Logger.Error(err.Error(), slog.Any("error", err))
+		}
+	})
 
 	eg, ctx := errgroup.WithContext(ctx)
 
@@ -76,14 +79,6 @@ func (s *server) Start(ctx context.Context) (StartedServer, error) {
 		return nil, err
 	}
 	eg.Go(serveFunc)
-
-	eg.Go(
-		func() error {
-			<-ctx.Done()
-			_ = listener.Close()
-			return nil
-		},
-	)
 
 	return &startedServer{
 		eg:               eg,
@@ -111,12 +106,14 @@ func (s *startedServer) Wait() error {
 func (s *startedServer) Stop() error {
 	s.cancelFn()
 	err := s.Wait()
-	if strings.Contains(err.Error(), "use of closed network connection") {
+	if err != nil && strings.Contains(err.Error(), "use of closed network connection") {
 		return nil
 	}
-	return err
+	return errtrace.Wrap(err)
 }
 
 func (s *startedServer) ConnectionString() ConnectionString {
 	return s.connectionString
 }
+
+type serveFn func() error
