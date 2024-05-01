@@ -28,6 +28,15 @@ func readMessages(filepath string) ([][]messageWithID, []messageWithID, error) {
 		if err != nil {
 			return nil, nil, errtrace.Wrap(err)
 		}
+
+		// TODO: drop the Message field and rebuild the message completely from its byte encoding
+
+		// gob being dumb with empty/nil slices, we need both the message and it's byte encoding, see https://github.com/golang/go/issues/10905
+		err = msg.Message.Decode(msg.MessageBytes[5:]) // remove the 1 byte message type identifier and the 4 byte message length
+		if err != nil {
+			return nil, nil, errtrace.Wrap(err)
+		}
+
 		records = append(records, msg)
 	}
 	_ = file.Close()

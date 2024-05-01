@@ -74,6 +74,10 @@ func TestServer(t *testing.T) {
 
 			require.Equal(t, "testvalue", val)
 
+			// test empty value because of https://github.com/golang/go/issues/10905
+			_, err = tx.Exec(ctx, `INSERT INTO test (value) VALUES ($1);`, "")
+			require.NoError(t, err)
+
 			// Testing copy from usage
 			_, err = tx.CopyFrom(ctx, pgx.Identifier{"test"}, []string{"value"}, pgx.CopyFromRows([][]interface{}{{"test2"}}))
 			require.NoError(t, err)

@@ -1,6 +1,7 @@
 package pgvcr
 
 import (
+	"braces.dev/errtrace"
 	"bytes"
 	"encoding/gob"
 	"github.com/jackc/pgx/v5/pgproto3"
@@ -17,6 +18,7 @@ type recorder struct {
 type messageWithID struct {
 	ConnectionID uint64
 	Message      pgproto3.Message
+	MessageBytes []byte // gob being dumb with empty/nil slices, we need both the message and it's byte encoding, see https://github.com/golang/go/issues/10905
 	IsIncoming   bool
 }
 
@@ -28,9 +30,15 @@ func (r *recorder) Record(connectionID uint64, msg pgproto3.Message, isIncoming 
 		r.encoder = gob.NewEncoder(&r.buffer)
 	}
 
+	msgBytes, err := msg.Encode(nil)
+	if err != nil {
+		return errtrace.Wrap(err)
+	}
+
 	newMsg := messageWithID{
 		ConnectionID: connectionID,
 		Message:      msg,
+		MessageBytes: msgBytes,
 		IsIncoming:   isIncoming,
 	}
 
