@@ -101,7 +101,7 @@ func filterOutPings(records []messageWithID) []messageWithID {
 	filteredRecords := make([]messageWithID, 0, len(records))
 
 	var i int
-	for i := 0; i < len(records)-2; i++ {
+	for i = 0; i < len(records)-2; i++ {
 		if isPingSequence([3]pgproto3.Message{records[i].Message, records[i+1].Message, records[i+2].Message}) {
 			// This is the sequence we are looking for, skip it
 			i += 2

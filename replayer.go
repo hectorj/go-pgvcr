@@ -13,18 +13,18 @@ func (e constError) Error() string {
 const errNoMoreMessages constError = "no more messages"
 
 type replayer struct {
-	lock sync.Mutex
-
+	lock     sync.Mutex
 	messages []messageWithID
 	cursor   int
 
+	greetingsLock   sync.Mutex
 	greetings       [][]messageWithID
 	greetingsCursor int
 }
 
 func (r *replayer) ConsumeGreetings(fn func(msgs []messageWithID) error) error {
-	r.lock.Lock()
-	defer r.lock.Unlock()
+	r.greetingsLock.Lock()
+	defer r.greetingsLock.Unlock()
 
 	msgs := r.greetings[r.greetingsCursor]
 

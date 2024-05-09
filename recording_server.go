@@ -63,7 +63,7 @@ func (s *server) recordingServer(ctx context.Context, listener net.Listener) (se
 			})
 
 			// Use atomic to increment the counter safely
-			backend := recordingBackend{
+			backend := recordingPgprotoBackend{
 				connectionID: atomic.AddUint64(&connectionIDCounter, 1),
 				backend:      pgproto3.NewBackend(backendConn, backendConn),
 				backendConn:  backendConn,
@@ -86,7 +86,7 @@ func (s *server) recordingServer(ctx context.Context, listener net.Listener) (se
 	return serveFunc, newConnectionString, nil
 }
 
-type recordingBackend struct {
+type recordingPgprotoBackend struct {
 	connectionID uint64
 
 	backend     *pgproto3.Backend
@@ -98,8 +98,8 @@ type recordingBackend struct {
 	recorder *recorder
 }
 
-func (p *recordingBackend) handleStartup() error {
-	startupMessage, err := p.backend.ReceiveStartupMessage()
+func (b *recordingPgprotoBackend) handleStartup() error {
+	startupMessage, err := b.backend.ReceiveStartupMessage()
 	if err != nil {
 		return fmt.Errorf("error receiving startup message: %w", err)
 	}
@@ -107,15 +107,15 @@ func (p *recordingBackend) handleStartup() error {
 	switch startupMessage.(type) {
 	case *pgproto3.SSLRequest:
 		// deny SSL
-		_, err = p.backendConn.Write([]byte("N"))
+		_, err = b.backendConn.Write([]byte("N"))
 		if err != nil {
 			return errtrace.Errorf("error sending deny SSL request: %w", err)
 		}
-		return errtrace.Wrap(p.handleStartup())
+		return errtrace.Wrap(b.handleStartup())
 	default:
 		// forward startup message
-		p.frontend.Send(startupMessage)
-		err = p.frontend.Flush()
+		b.frontend.Send(startupMessage)
+		err = b.frontend.Flush()
 		if err != nil {
 			return errtrace.Wrap(err)
 		}
@@ -124,10 +124,10 @@ func (p *recordingBackend) handleStartup() error {
 	return nil
 }
 
-func (p *recordingBackend) Run() error {
-	defer p.Close()
+func (b *recordingPgprotoBackend) Run() error {
+	defer b.Close()
 
-	err := p.handleStartup()
+	err := b.handleStartup()
 	if err != nil {
 		return errtrace.Wrap(err)
 	}
@@ -136,18 +136,18 @@ func (p *recordingBackend) Run() error {
 
 	eg.Go(func() error {
 		for {
-			msg, err := p.backend.Receive()
+			msg, err := b.backend.Receive()
 
 			if err != nil {
 				return errtrace.Errorf("error receiving message (backend): %w", err)
 			}
-			err = p.recorder.Record(p.connectionID, msg, true)
+			err = b.recorder.Record(b.connectionID, msg, true)
 			if err != nil {
 				return errtrace.Wrap(err)
 			}
 
-			p.frontend.Send(msg)
-			err = p.frontend.Flush()
+			b.frontend.Send(msg)
+			err = b.frontend.Flush()
 			if err != nil {
 				return errtrace.Errorf("error sending message (frontend): %w", err)
 			}
@@ -156,21 +156,21 @@ func (p *recordingBackend) Run() error {
 
 	eg.Go(func() error {
 		for {
-			msg, err := p.frontend.Receive()
+			msg, err := b.frontend.Receive()
 			if err != nil {
 				return errtrace.Errorf("error receiving message (frontend): %w", err)
 			}
-			err = p.recorder.Record(p.connectionID, msg, false)
+			err = b.recorder.Record(b.connectionID, msg, false)
 			if err != nil {
 				return errtrace.Wrap(err)
 			}
-			err = p.backend.SetAuthType(p.frontend.GetAuthType())
+			err = b.backend.SetAuthType(b.frontend.GetAuthType())
 			if err != nil {
 				return errtrace.Wrap(err)
 			}
 
-			p.backend.Send(msg)
-			err = p.backend.Flush()
+			b.backend.Send(msg)
+			err = b.backend.Flush()
 			if err != nil {
 				return errtrace.Errorf("error sending message (backend): %w", err)
 			}
@@ -184,6 +184,6 @@ func (p *recordingBackend) Run() error {
 	return err
 }
 
-func (p *recordingBackend) Close() error {
-	return errtrace.Wrap(p.backendConn.Close())
+func (b *recordingPgprotoBackend) Close() error {
+	return errtrace.Wrap(b.backendConn.Close())
 }

@@ -42,6 +42,11 @@ type Server interface {
 
 func (s *server) Start(ctx context.Context) (StartedServer, error) {
 	ctx, cancelFn := context.WithCancel(ctx)
+
+	if s.cfg.Logger != nil {
+		ctx = contextWithLogger(ctx, s.cfg.Logger)
+	}
+
 	isRecording, err := s.cfg.IsRecording(ctx, s.cfg)
 	if err != nil {
 		cancelFn()

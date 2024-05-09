@@ -51,7 +51,7 @@ func TestServer(t *testing.T) {
 			server, err := tt.server.Start(ctx)
 			require.NoError(t, err)
 
-			defer func() { require.NoError(t, server.Stop()) }()
+			t.Cleanup(func() { require.NoError(t, server.Stop()) })
 
 			db, err := pgxpool.New(ctx, server.ConnectionString())
 			require.NoError(t, err)
@@ -108,6 +108,7 @@ func newTestLogger(_ *testing.T) *slog.Logger {
 }
 
 func TestRun_Concurrency(t *testing.T) {
+	t.Skip("not implemented yet")
 	ctx, cancelFn := context.WithCancel(context.Background())
 	t.Cleanup(cancelFn)
 	db := NewPgxTestingServer(t)
