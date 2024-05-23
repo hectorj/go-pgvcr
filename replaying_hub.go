@@ -34,16 +34,6 @@ type replayingHub struct {
 	lock                 sync.Mutex
 }
 
-func (h *replayingHub) addConnection(connID uint64, backend *pgproto3.Backend) {
-	h.lock.Lock()
-	defer h.lock.Unlock()
-
-	h.connections = append(h.connections, replayingConnection{
-		connectionID:   connID,
-		pgprotoBackend: backend,
-	})
-}
-
 func startReplayHub(ctx context.Context, r *replayer, listener net.Listener) error {
 	ctx, cancelFn := context.WithCancel(ctx)
 	defer cancelFn()
@@ -112,7 +102,7 @@ func (h *replayingHub) receiveMessagesLoop(ctx context.Context, conn replayingCo
 
 	for ctx.Err() == nil {
 		msg, err := conn.pgprotoBackend.Receive()
-		if errors.Is(err, net.ErrClosed) || (err != nil && err.Error() == io.EOF.Error()) {
+		if errors.Is(err, net.ErrClosed) || errors.Is(err, io.ErrUnexpectedEOF) || errors.Is(err, io.EOF) || (err != nil && err.Error() == io.EOF.Error()) {
 			return
 		}
 		if err != nil {
