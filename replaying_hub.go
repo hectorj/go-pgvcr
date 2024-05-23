@@ -110,6 +110,9 @@ func (h *replayingHub) receiveMessagesLoop(ctx context.Context, conn replayingCo
 			// TODO: close connection? send error on wire?
 			return
 		}
+		if isTerminate(msg) {
+			return
+		}
 		if isPingQuery(msg) {
 			logDebug(ctx, "sending ping response") // FIXME
 			conn.pgprotoBackend.Send(&pgproto3.EmptyQueryResponse{})
@@ -127,6 +130,11 @@ func (h *replayingHub) receiveMessagesLoop(ctx context.Context, conn replayingCo
 			message:      msg,
 		}
 	}
+}
+
+func isTerminate(msg pgproto3.FrontendMessage) bool {
+	_, ok := msg.(*pgproto3.Terminate)
+	return ok
 }
 
 func (h *replayingHub) handleStartup(ctx context.Context, conn replayingConnection) error {

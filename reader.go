@@ -43,8 +43,25 @@ func readMessages(filepath string) ([][]messageWithID, []messageWithID, error) {
 
 	records = filterOutAuth(records)
 	records = filterOutPings(records)
+	records = filterOutTerminate(records)
 
 	return errtrace.Wrap3(splitGreetingsByConnectionID(records))
+}
+
+func filterOutTerminate(records []messageWithID) []messageWithID {
+	filteredRecords := make([]messageWithID, 0, len(records))
+
+	for _, record := range records {
+		switch record.Message.(type) {
+		case *pgproto3.Terminate:
+			// Skip this record
+			continue
+		default:
+			filteredRecords = append(filteredRecords, record)
+		}
+	}
+
+	return filteredRecords
 }
 
 func filterOutAuth(records []messageWithID) []messageWithID {
