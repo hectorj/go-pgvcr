@@ -4,6 +4,7 @@ import (
 	"braces.dev/errtrace"
 	"context"
 	"errors"
+	"fmt"
 	"golang.org/x/sync/errgroup"
 	"io"
 	"log/slog"
@@ -108,19 +109,22 @@ type StartedServer interface {
 }
 
 func (s *startedServer) Wait() error {
-	return errtrace.Wrap(s.eg.Wait())
-}
-
-func (s *startedServer) Stop() error {
-	s.cancelFn()
-	err := s.Wait()
+	err := s.eg.Wait()
 	if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) || errors.Is(err, context.Canceled) {
 		err = nil
 	}
 	if err != nil && strings.Contains(err.Error(), "use of closed network connection") {
 		return nil
 	}
+	if err != nil {
+		err = fmt.Errorf("pgvcr: %w", err)
+	}
 	return errtrace.Wrap(err)
+}
+
+func (s *startedServer) Stop() error {
+	s.cancelFn()
+	return errtrace.Wrap(s.Wait())
 }
 
 func (s *startedServer) ConnectionString() ConnectionString {

@@ -217,7 +217,7 @@ func (h *replayingHub) processOutgoingMessage(expectedMessage messageWithID) err
 	return errtrace.Wrap(pgprotoBackend.Flush())
 }
 
-func (h *replayingHub) processIncomingMessage(ctx context.Context, expectedMessage messageWithID) error {
+func (h *replayingHub) processIncomingMessage(_ context.Context, expectedMessage messageWithID) error {
 	var actualMessage incomingMessage
 	select {
 	case <-time.After(time.Minute):
@@ -240,7 +240,7 @@ func (h *replayingHub) processIncomingMessage(ctx context.Context, expectedMessa
 		return errtrace.Wrap(err)
 	}
 	if !slices.Equal(expectedBytes, actualBytes) {
-		return errtrace.Errorf("unexpected message \nexpected(%#v) \n!= \nactual(%#v)", expectedMessage.Message, actualMessage.message)
+		return errtrace.Errorf("unexpected SQL message \nexpected(%q) \n!= \nactual(%q)\n\neither your SQL queries/params are unstable, or you need to regenerate the recording", string(expectedBytes), string(actualBytes))
 	}
 	return nil
 }
