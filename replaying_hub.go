@@ -240,7 +240,7 @@ func (h *replayingHub) processIncomingMessage(_ context.Context, expectedMessage
 		return errtrace.Wrap(err)
 	}
 	if !slices.Equal(expectedBytes, actualBytes) {
-		return errtrace.Errorf("unexpected SQL message \nexpected(%q) \n!= \nactual(%q)\n\neither your SQL queries/params are unstable, or you need to regenerate the recording", string(expectedBytes), string(actualBytes))
+		return errtrace.Errorf("unexpected SQL message \nexpected:\n%q\n\t!=\nactual:\n%q\n\neither your SQL queries/params are unstable, or you need to regenerate the recording", string(expectedBytes), string(actualBytes))
 	}
 	return nil
 }
