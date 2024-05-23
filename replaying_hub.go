@@ -94,6 +94,9 @@ func (h *replayingHub) acceptConnectionsLoop(ctx context.Context) error {
 
 func (h *replayingHub) receiveMessagesLoop(ctx context.Context, conn replayingConnection) {
 	err := h.handleStartup(ctx, conn)
+	if errIsClosedConnection(err) {
+		return
+	}
 	if err != nil {
 		logError(ctx, errtrace.Errorf("handling connection startup: %w", err))
 		// TODO: close connection? send error on wire?
@@ -102,7 +105,7 @@ func (h *replayingHub) receiveMessagesLoop(ctx context.Context, conn replayingCo
 
 	for ctx.Err() == nil {
 		msg, err := conn.pgprotoBackend.Receive()
-		if errors.Is(err, net.ErrClosed) || errors.Is(err, io.ErrUnexpectedEOF) || errors.Is(err, io.EOF) || (err != nil && err.Error() == io.EOF.Error()) {
+		if errIsClosedConnection(err) {
 			return
 		}
 		if err != nil {
@@ -130,6 +133,9 @@ func (h *replayingHub) receiveMessagesLoop(ctx context.Context, conn replayingCo
 			message:      msg,
 		}
 	}
+}
+func errIsClosedConnection(err error) bool {
+	return errors.Is(err, net.ErrClosed) || errors.Is(err, io.ErrUnexpectedEOF) || errors.Is(err, io.EOF) || (err != nil && err.Error() == io.EOF.Error())
 }
 
 func isTerminate(msg pgproto3.FrontendMessage) bool {
