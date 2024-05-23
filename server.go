@@ -3,7 +3,9 @@ package pgvcr
 import (
 	"braces.dev/errtrace"
 	"context"
+	"errors"
 	"golang.org/x/sync/errgroup"
+	"io"
 	"log/slog"
 	"net"
 	"strings"
@@ -56,6 +58,7 @@ func (s *server) Start(ctx context.Context) (StartedServer, error) {
 	listener := s.cfg.Listener
 	if listener == nil {
 		listener, err = net.Listen("tcp", "localhost:")
+		logDebug(ctx, "started listening", slog.String("address", listener.Addr().String()))
 		if err != nil {
 			cancelFn()
 			return nil, err
@@ -111,6 +114,9 @@ func (s *startedServer) Wait() error {
 func (s *startedServer) Stop() error {
 	s.cancelFn()
 	err := s.Wait()
+	if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) || errors.Is(err, context.Canceled) {
+		err = nil
+	}
 	if err != nil && strings.Contains(err.Error(), "use of closed network connection") {
 		return nil
 	}
