@@ -52,7 +52,7 @@ func (s *server) Start(ctx context.Context) (StartedServer, error) {
 	isRecording, err := s.cfg.IsRecording(ctx, s.cfg)
 	if err != nil {
 		cancelFn()
-		return nil, err
+		return nil, errtrace.Wrap(err)
 	}
 
 	listener := s.cfg.Listener
@@ -61,7 +61,7 @@ func (s *server) Start(ctx context.Context) (StartedServer, error) {
 		logDebug(ctx, "started listening", slog.String("address", listener.Addr().String()))
 		if err != nil {
 			cancelFn()
-			return nil, err
+			return nil, errtrace.Wrap(err)
 		}
 	}
 	_ = context.AfterFunc(ctx, func() {
@@ -84,7 +84,7 @@ func (s *server) Start(ctx context.Context) (StartedServer, error) {
 	}
 	if err != nil {
 		cancelFn()
-		return nil, err
+		return nil, errtrace.Wrap(err)
 	}
 	eg.Go(serveFunc)
 
@@ -108,7 +108,7 @@ type StartedServer interface {
 }
 
 func (s *startedServer) Wait() error {
-	return s.eg.Wait()
+	return errtrace.Wrap(s.eg.Wait())
 }
 
 func (s *startedServer) Stop() error {

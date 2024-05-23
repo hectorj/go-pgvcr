@@ -1,6 +1,7 @@
 package pgvcr
 
 import (
+	"braces.dev/errtrace"
 	"sync"
 )
 
@@ -32,7 +33,7 @@ func (r *replayer) ConsumeGreetings(fn func(msgs []messageWithID) error) error {
 		r.greetingsCursor++
 	}
 
-	return fn(msgs)
+	return errtrace.Wrap(fn(msgs))
 }
 
 func (r *replayer) ConsumeNext(fn func(m messageWithID) error) error {
@@ -40,11 +41,11 @@ func (r *replayer) ConsumeNext(fn func(m messageWithID) error) error {
 	defer r.lock.Unlock()
 
 	if r.cursor >= len(r.messages) {
-		return errNoMoreMessages
+		return errtrace.Wrap(errNoMoreMessages)
 	}
 
 	msg := r.messages[r.cursor]
 	r.cursor++
 
-	return fn(msg)
+	return errtrace.Wrap(fn(msg))
 }

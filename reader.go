@@ -44,7 +44,7 @@ func readMessages(filepath string) ([][]messageWithID, []messageWithID, error) {
 	records = filterOutAuth(records)
 	records = filterOutPings(records)
 
-	return splitGreetingsByConnectionID(records)
+	return errtrace.Wrap3(splitGreetingsByConnectionID(records))
 }
 
 func filterOutAuth(records []messageWithID) []messageWithID {

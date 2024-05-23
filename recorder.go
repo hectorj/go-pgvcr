@@ -42,9 +42,9 @@ func (r *recorder) Record(connectionID uint64, msg pgproto3.Message, isIncoming 
 		IsIncoming:   isIncoming,
 	}
 
-	return r.encoder.Encode(&newMsg)
+	return errtrace.Wrap(r.encoder.Encode(&newMsg))
 }
 
 func (r *recorder) FlushToFile(filepath string) error {
-	return os.WriteFile(filepath, r.buffer.Bytes(), 0600)
+	return errtrace.Wrap(os.WriteFile(filepath, r.buffer.Bytes(), 0600))
 }

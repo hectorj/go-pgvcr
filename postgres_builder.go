@@ -1,6 +1,7 @@
 package pgvcr
 
 import (
+	"braces.dev/errtrace"
 	"context"
 	"errors"
 	"fmt"
@@ -25,7 +26,7 @@ func PostgresBuilderFallback(builders ...func(context.Context, Config) (Connecti
 			}
 			errs = errors.Join(errs, err)
 		}
-		return "", fmt.Errorf("all postgres builders failed: %w", errs)
+		return "", errtrace.Wrap(fmt.Errorf("all postgres builders failed: %w", errs))
 	}
 }
 
@@ -33,7 +34,7 @@ func PostgresBuilderViaEnvVar(envKey string) func(_ context.Context, _ Config) (
 	return func(_ context.Context, _ Config) (ConnectionString, error) {
 		dsn := os.Getenv(envKey)
 		if dsn == "" {
-			return "", fmt.Errorf("env var %q not found", envKey)
+			return "", errtrace.Wrap(fmt.Errorf("env var %q not found", envKey))
 		}
 		return dsn, nil
 	}
@@ -61,8 +62,8 @@ func PostgresBuilderViaTestContainers(ctx context.Context, cfg Config) (Connecti
 		),
 	)
 	if err != nil {
-		return "", err
+		return "", errtrace.Wrap(err)
 	}
 
-	return postgresContainer.ConnectionString(ctx, "sslmode=disable")
+	return errtrace.Wrap2(postgresContainer.ConnectionString(ctx, "sslmode=disable"))
 }

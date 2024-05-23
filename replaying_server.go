@@ -19,7 +19,7 @@ func (s *server) replayingServer(ctx context.Context, listener net.Listener) (se
 	connectionString := "postgresql://user:password@" + listener.Addr().String() + "/db?sslmode=disable"
 
 	serveFn := func() error {
-		return startReplayHub(ctx, r, listener)
+		return errtrace.Wrap(startReplayHub(ctx, r, listener))
 	}
 
 	return serveFn, connectionString, nil

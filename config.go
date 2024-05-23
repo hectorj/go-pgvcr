@@ -1,6 +1,7 @@
 package pgvcr
 
 import (
+	"braces.dev/errtrace"
 	"context"
 	"log/slog"
 	"net"
@@ -72,7 +73,7 @@ func ReplayIfRecordExists(_ context.Context, cfg Config) (bool, error) {
 		if os.IsNotExist(err) {
 			return true, nil
 		}
-		return false, err
+		return false, errtrace.Wrap(err)
 	}
 	return false, nil
 }

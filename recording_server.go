@@ -16,11 +16,11 @@ import (
 func (s *server) recordingServer(ctx context.Context, listener net.Listener) (serveFn, ConnectionString, error) {
 	targetConnectionString, err := s.cfg.RealPostgresBuilder(ctx, s.cfg)
 	if err != nil {
-		return nil, "", err
+		return nil, "", errtrace.Wrap(err)
 	}
 	targetURL, err := url.Parse(targetConnectionString)
 	if err != nil {
-		return nil, "", err
+		return nil, "", errtrace.Wrap(err)
 	}
 	targetHost := targetURL.Host
 	targetURL.Host = listener.Addr().String()
@@ -81,7 +81,7 @@ func (s *server) recordingServer(ctx context.Context, listener net.Listener) (se
 			})
 		}
 
-		return mainEg.Wait()
+		return errtrace.Wrap(mainEg.Wait())
 	}
 	return serveFunc, newConnectionString, nil
 }
@@ -101,7 +101,7 @@ type recordingPgprotoBackend struct {
 func (b *recordingPgprotoBackend) handleStartup() error {
 	startupMessage, err := b.backend.ReceiveStartupMessage()
 	if err != nil {
-		return fmt.Errorf("error receiving startup message: %w", err)
+		return errtrace.Wrap(fmt.Errorf("error receiving startup message: %w", err))
 	}
 
 	switch startupMessage.(type) {
@@ -181,7 +181,7 @@ func (b *recordingPgprotoBackend) Run() error {
 	if errors.Is(err, io.ErrUnexpectedEOF) || errors.Is(err, net.ErrClosed) {
 		return nil
 	}
-	return err
+	return errtrace.Wrap(err)
 }
 
 func (b *recordingPgprotoBackend) Close() error {
