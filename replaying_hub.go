@@ -128,9 +128,13 @@ func (h *replayingHub) receiveMessagesLoop(ctx context.Context, conn replayingCo
 			}
 			continue
 		}
-		h.incomingMessagesChan <- incomingMessage{
+		select {
+		case h.incomingMessagesChan <- incomingMessage{
 			connectionID: conn.connectionID,
 			message:      msg,
+		}:
+		case <-ctx.Done():
+			return
 		}
 	}
 }
@@ -190,7 +194,11 @@ func (h *replayingHub) mainLoop(ctx context.Context) error {
 	for ctx.Err() == nil {
 		err := h.replayer.ConsumeNext(func(expectedMessage messageWithID) error {
 			if expectedMessage.IsIncoming {
-				return errtrace.Wrap(h.processIncomingMessage(ctx, expectedMessage))
+				err := h.processIncomingMessage(ctx, expectedMessage)
+				if err != nil {
+					h.sendErrOnWire(ctx, expectedMessage.ConnectionID, err)
+				}
+				return errtrace.Wrap(err)
 			}
 
 			return errtrace.Wrap(h.processOutgoingMessage(expectedMessage))
@@ -205,22 +213,53 @@ func (h *replayingHub) mainLoop(ctx context.Context) error {
 	return errtrace.Wrap(ctx.Err())
 }
 
+func (h *replayingHub) sendErrOnWire(_ context.Context, recordedConnectionID uint64, err error) {
+	connection := h.getConnection(recordedConnectionID)
+	connection.pgprotoBackend.Send(&pgproto3.ErrorResponse{
+		Severity:            "FATAL",
+		SeverityUnlocalized: "FATAL",
+		Code:                "22000",
+		Message:             "pgvcr error",
+		Detail:              err.Error(),
+		Hint:                "",
+		Position:            0,
+		InternalPosition:    0,
+		InternalQuery:       "",
+		Where:               "",
+		SchemaName:          "",
+		TableName:           "",
+		ColumnName:          "",
+		DataTypeName:        "",
+		ConstraintName:      "",
+		File:                "",
+		Line:                0,
+		Routine:             "",
+		UnknownFields:       nil,
+	})
+	_ = connection.pgprotoBackend.Flush()
+}
+
 func (h *replayingHub) processOutgoingMessage(expectedMessage messageWithID) error {
+	pgprotoBackend := h.getConnection(expectedMessage.ConnectionID).pgprotoBackend
+	pgprotoBackend.Send(expectedMessage.Message.(pgproto3.BackendMessage))
+	return errtrace.Wrap(pgprotoBackend.Flush())
+}
+
+func (h *replayingHub) getConnection(recordedConnectionID uint64) replayingConnection {
 	h.lock.Lock()
-	pgprotoBackend := h.connections[len(h.connections)-1].pgprotoBackend
-	connectionID, ok := h.connectionIDsMap[expectedMessage.ConnectionID]
+	defer h.lock.Unlock()
+
+	connection := h.connections[len(h.connections)-1]
+	connectionID, ok := h.connectionIDsMap[recordedConnectionID]
 	if ok {
 		connectionIndex := slices.IndexFunc(h.connections, func(connection replayingConnection) bool {
 			return connection.connectionID == connectionID
 		})
 		if connectionIndex != -1 {
-			pgprotoBackend = h.connections[connectionIndex].pgprotoBackend
+			connection = h.connections[connectionIndex]
 		}
 	}
-	h.lock.Unlock()
-
-	pgprotoBackend.Send(expectedMessage.Message.(pgproto3.BackendMessage))
-	return errtrace.Wrap(pgprotoBackend.Flush())
+	return connection
 }
 
 func (h *replayingHub) processIncomingMessage(_ context.Context, expectedMessage messageWithID) error {

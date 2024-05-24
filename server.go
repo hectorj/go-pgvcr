@@ -87,7 +87,10 @@ func (s *server) Start(ctx context.Context) (StartedServer, error) {
 		cancelFn()
 		return nil, errtrace.Wrap(err)
 	}
-	eg.Go(serveFunc)
+	eg.Go(func() error {
+		defer cancelFn()
+		return serveFunc()
+	})
 
 	return &startedServer{
 		eg:               eg,
