@@ -23,6 +23,7 @@ type replayingConnection struct {
 	connectionID   uint64
 	conn           net.Conn
 	pgprotoBackend *pgproto3.Backend
+	sendLock       *sync.Mutex
 }
 
 type replayingHub struct {
@@ -79,6 +80,7 @@ func (h *replayingHub) acceptConnectionsLoop(ctx context.Context) error {
 			connectionID:   connectionID,
 			conn:           conn,
 			pgprotoBackend: pgproto3.NewBackend(conn, conn),
+			sendLock:       &sync.Mutex{},
 		}
 
 		h.lock.Lock()
@@ -118,9 +120,11 @@ func (h *replayingHub) receiveMessagesLoop(ctx context.Context, conn replayingCo
 		}
 		if isPingQuery(msg) {
 			logDebug(ctx, "sending ping response") // FIXME
+			conn.sendLock.Lock()
 			conn.pgprotoBackend.Send(&pgproto3.EmptyQueryResponse{})
 			conn.pgprotoBackend.Send(&pgproto3.ReadyForQuery{TxStatus: 'I'})
 			err := conn.pgprotoBackend.Flush()
+			conn.sendLock.Unlock()
 			if err != nil {
 				logError(ctx, errtrace.Errorf("sending ping response: %w", err))
 				// TODO: close connection? send error on wire?
@@ -168,6 +172,8 @@ func (h *replayingHub) handleStartup(ctx context.Context, conn replayingConnecti
 		}
 
 		err = h.replayer.ConsumeGreetings(func(msgs []messageWithID) error {
+			conn.sendLock.Lock()
+			defer conn.sendLock.Unlock()
 			for _, msg := range msgs {
 				conn.pgprotoBackend.Send(msg.Message.(pgproto3.BackendMessage))
 			}
@@ -214,8 +220,10 @@ func (h *replayingHub) mainLoop(ctx context.Context) error {
 }
 
 func (h *replayingHub) sendErrOnWire(_ context.Context, recordedConnectionID uint64, err error) {
-	connection := h.getConnection(recordedConnectionID)
-	connection.pgprotoBackend.Send(&pgproto3.ErrorResponse{
+	conn := h.getConnection(recordedConnectionID)
+	conn.sendLock.Lock()
+	defer conn.sendLock.Unlock()
+	conn.pgprotoBackend.Send(&pgproto3.ErrorResponse{
 		Severity:            "FATAL",
 		SeverityUnlocalized: "FATAL",
 		Code:                "22000",
@@ -236,13 +244,15 @@ func (h *replayingHub) sendErrOnWire(_ context.Context, recordedConnectionID uin
 		Routine:             "",
 		UnknownFields:       nil,
 	})
-	_ = connection.pgprotoBackend.Flush()
+	_ = conn.pgprotoBackend.Flush()
 }
 
 func (h *replayingHub) processOutgoingMessage(expectedMessage messageWithID) error {
-	pgprotoBackend := h.getConnection(expectedMessage.ConnectionID).pgprotoBackend
-	pgprotoBackend.Send(expectedMessage.Message.(pgproto3.BackendMessage))
-	return errtrace.Wrap(pgprotoBackend.Flush())
+	conn := h.getConnection(expectedMessage.ConnectionID)
+	conn.sendLock.Lock()
+	defer conn.sendLock.Unlock()
+	conn.pgprotoBackend.Send(expectedMessage.Message.(pgproto3.BackendMessage))
+	return errtrace.Wrap(conn.pgprotoBackend.Flush())
 }
 
 func (h *replayingHub) getConnection(recordedConnectionID uint64) replayingConnection {
