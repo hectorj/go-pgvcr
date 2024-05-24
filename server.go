@@ -81,7 +81,7 @@ func (s *server) Start(ctx context.Context) (StartedServer, error) {
 	if isRecording {
 		serveFunc, connectionString, err = s.recordingServer(ctx, listener)
 	} else {
-		serveFunc, connectionString, err = s.replayingServer(ctx, listener)
+		serveFunc, connectionString, err = s.replayingServer(ctx, listener, s.cfg.QueryOrderValidationStrategy)
 	}
 	if err != nil {
 		cancelFn()

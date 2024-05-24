@@ -27,25 +27,28 @@ type replayingConnection struct {
 }
 
 type replayingHub struct {
-	listener             net.Listener
-	replayer             *replayer
-	connections          []replayingConnection
-	incomingMessagesChan chan incomingMessage
-	connectionIDsMap     map[uint64]uint64
-	lock                 sync.Mutex
+	listener                     net.Listener
+	replayer                     *replayer
+	connections                  []replayingConnection
+	incomingMessagesChan         chan incomingMessage
+	connectionIDsMap             map[uint64]uint64
+	connectionsLock              sync.Mutex
+	queryOrderValidationStrategy QueryOrderValidationStrategy
+	stalledMessages              []incomingMessage
 }
 
-func startReplayHub(ctx context.Context, r *replayer, listener net.Listener) error {
+func startReplayHub(ctx context.Context, r *replayer, listener net.Listener, queryOrderValidationStrategy QueryOrderValidationStrategy) error {
 	ctx, cancelFn := context.WithCancel(ctx)
 	defer cancelFn()
 
 	h := &replayingHub{
-		listener:             listener,
-		replayer:             r,
-		connections:          make([]replayingConnection, 0, 1),
-		incomingMessagesChan: make(chan incomingMessage),
-		connectionIDsMap:     make(map[uint64]uint64),
-		lock:                 sync.Mutex{},
+		listener:                     listener,
+		replayer:                     r,
+		connections:                  make([]replayingConnection, 0, 1),
+		incomingMessagesChan:         make(chan incomingMessage),
+		connectionIDsMap:             make(map[uint64]uint64),
+		connectionsLock:              sync.Mutex{},
+		queryOrderValidationStrategy: queryOrderValidationStrategy,
 	}
 
 	eg, ctx := errgroup.WithContext(ctx)
@@ -83,9 +86,9 @@ func (h *replayingHub) acceptConnectionsLoop(ctx context.Context) error {
 			sendLock:       &sync.Mutex{},
 		}
 
-		h.lock.Lock()
+		h.connectionsLock.Lock()
 		h.connections = append(h.connections, rConn)
-		h.lock.Unlock()
+		h.connectionsLock.Unlock()
 
 		go h.receiveMessagesLoop(ctx, rConn)
 
@@ -152,12 +155,12 @@ func isTerminate(msg pgproto3.FrontendMessage) bool {
 }
 
 func (h *replayingHub) handleStartup(ctx context.Context, conn replayingConnection) error {
-	logDebug(ctx, "expecting startup message")
+	logDebug(ctx, "expecting startup message", slog.Uint64("connectionID", conn.connectionID))
 	startupMessage, err := conn.pgprotoBackend.ReceiveStartupMessage()
 	if err != nil {
 		return errtrace.Errorf("error receiving startup message: %w", err)
 	}
-	logDebug(ctx, "received startup message", slog.Any("startupMessage", startupMessage))
+	logDebug(ctx, "received startup message", slog.Any("startupMessage", startupMessage), slog.Uint64("connectionID", conn.connectionID))
 
 	switch startupMessage.(type) {
 	case *pgproto3.StartupMessage:
@@ -165,7 +168,7 @@ func (h *replayingHub) handleStartup(ctx context.Context, conn replayingConnecti
 		if err != nil {
 			return errtrace.Wrap(err)
 		}
-		logDebug(ctx, "sending AuthenticationOk")
+		logDebug(ctx, "sending AuthenticationOk", slog.Uint64("connectionID", conn.connectionID))
 		_, err = conn.conn.Write(buf)
 		if err != nil {
 			return errtrace.Wrap(err)
@@ -183,7 +186,7 @@ func (h *replayingHub) handleStartup(ctx context.Context, conn replayingConnecti
 			return errtrace.Wrap(err)
 		}
 	case *pgproto3.SSLRequest:
-		logDebug(ctx, "refusing SSL")
+		logDebug(ctx, "refusing SSL", slog.Uint64("connectionID", conn.connectionID))
 		_, err = conn.conn.Write([]byte("N"))
 		if err != nil {
 			return errtrace.Wrap(err)
@@ -200,6 +203,7 @@ func (h *replayingHub) mainLoop(ctx context.Context) error {
 	for ctx.Err() == nil {
 		err := h.replayer.ConsumeNext(func(expectedMessage messageWithID) error {
 			if expectedMessage.IsIncoming {
+				logDebug(ctx, "expecting incoming message", slog.Any("expectedMessage", expectedMessage))
 				err := h.processIncomingMessage(ctx, expectedMessage)
 				if err != nil {
 					h.sendErrOnWire(ctx, expectedMessage.ConnectionID, err)
@@ -207,6 +211,7 @@ func (h *replayingHub) mainLoop(ctx context.Context) error {
 				return errtrace.Wrap(err)
 			}
 
+			logDebug(ctx, "sending outgoing message", slog.Any("expectedMessage", expectedMessage))
 			return errtrace.Wrap(h.processOutgoingMessage(expectedMessage))
 		})
 		if errors.Is(err, errNoMoreMessages) {
@@ -256,8 +261,8 @@ func (h *replayingHub) processOutgoingMessage(expectedMessage messageWithID) err
 }
 
 func (h *replayingHub) getConnection(recordedConnectionID uint64) replayingConnection {
-	h.lock.Lock()
-	defer h.lock.Unlock()
+	h.connectionsLock.Lock()
+	defer h.connectionsLock.Unlock()
 
 	connection := h.connections[len(h.connections)-1]
 	connectionID, ok := h.connectionIDsMap[recordedConnectionID]
@@ -272,20 +277,34 @@ func (h *replayingHub) getConnection(recordedConnectionID uint64) replayingConne
 	return connection
 }
 
-func (h *replayingHub) processIncomingMessage(_ context.Context, expectedMessage messageWithID) error {
-	var actualMessage incomingMessage
-	select {
-	case <-time.After(time.Minute):
-		return errtrace.Errorf("timed out waiting for incoming message")
-	case actualMessage = <-h.incomingMessagesChan:
+func (h *replayingHub) processIncomingMessage(ctx context.Context, expectedMessage messageWithID) error {
+	actualMessage, err := h.getNextIncomingMessage(ctx)
+	if err != nil {
+		return errtrace.Wrap(err)
 	}
 
-	h.lock.Lock()
-	h.connectionIDsMap[expectedMessage.ConnectionID] = actualMessage.connectionID
-	h.lock.Unlock()
+	err = h.checkIfMessagesMatch(expectedMessage, actualMessage)
+	if err != nil {
+		if errors.Is(err, ErrMessageMismatch) && h.queryOrderValidationStrategy == QueryOrderValidationStrategyStalling {
+			if h.tryStalling(ctx, expectedMessage, actualMessage) == nil {
+				return nil
+			}
+		}
+		return errtrace.Wrap(err)
+	}
 
-	var expectedBytes, actualBytes []byte
+	h.connectionsLock.Lock()
+	h.connectionIDsMap[expectedMessage.ConnectionID] = actualMessage.connectionID
+	h.connectionsLock.Unlock()
+
+	return nil
+}
+
+const ErrMessageMismatch constError = "err_message_mismatch"
+
+func (h *replayingHub) checkIfMessagesMatch(expectedMessage messageWithID, actualMessage incomingMessage) error {
 	var err error
+	var expectedBytes, actualBytes []byte
 	expectedBytes, err = expectedMessage.Message.Encode(expectedBytes)
 	if err != nil {
 		return errtrace.Wrap(err)
@@ -294,8 +313,47 @@ func (h *replayingHub) processIncomingMessage(_ context.Context, expectedMessage
 	if err != nil {
 		return errtrace.Wrap(err)
 	}
-	if !slices.Equal(expectedBytes, actualBytes) {
-		return errtrace.Errorf("unexpected SQL message \nexpected:\n%q\n\t!=\nactual:\n%q\n\neither your SQL queries/params are unstable, or you need to regenerate the recording", string(expectedBytes), string(actualBytes))
+	messagesMatch := slices.Equal(expectedBytes, actualBytes)
+	if !messagesMatch {
+		return errtrace.Errorf("%w\nunexpected SQL message \nexpected:\n%q\n\t!=\nactual:\n%q\n\neither your SQL queries/params are unstable, or you need to regenerate the recording", ErrMessageMismatch, string(expectedBytes), string(actualBytes))
+	}
+	if _, isSync := expectedMessage.Message.(*pgproto3.Sync); isSync {
+		h.connectionsLock.Lock()
+		expectedConnectionID := h.connectionIDsMap[expectedMessage.ConnectionID]
+		h.connectionsLock.Unlock()
+		if expectedConnectionID != actualMessage.connectionID {
+			return errtrace.Errorf("%w: mismatched sync connection ID", ErrMessageMismatch)
+		}
 	}
 	return nil
+}
+
+func (h *replayingHub) getNextIncomingMessage(ctx context.Context) (incomingMessage, error) {
+	var actualMessage incomingMessage
+	if len(h.stalledMessages) > 0 {
+		actualMessage = h.stalledMessages[len(h.stalledMessages)-1]
+		h.stalledMessages = h.stalledMessages[:len(h.stalledMessages)-1]
+		//logDebug(ctx, "using stalled message", slog.String("message", fmt.Sprintf("%#v", actualMessage.message)), slog.Int("stalledLeftCount", len(h.stalledMessages)))
+		return actualMessage, nil
+	}
+	ctx, cancelFunc := context.WithTimeoutCause(ctx, time.Minute, errtrace.New("timed out waiting for incoming message"))
+	defer cancelFunc()
+
+	select {
+	case <-ctx.Done():
+		return incomingMessage{}, errtrace.Wrap(ctx.Err())
+	case actualMessage = <-h.incomingMessagesChan:
+	}
+	//logDebug(ctx, "received new message", slog.String("message", fmt.Sprintf("%#v", actualMessage.message)), slog.Int("stalledLeftCount", len(h.stalledMessages)))
+	return actualMessage, nil
+}
+
+func (h *replayingHub) tryStalling(ctx context.Context, expectedMessage messageWithID, actualMessage incomingMessage) error {
+	ctx, cancelFunc := context.WithTimeoutCause(ctx, time.Minute, errtrace.New("stalling for too long"))
+	defer cancelFunc()
+
+	err := h.processIncomingMessage(ctx, expectedMessage)
+	h.stalledMessages = append(h.stalledMessages, actualMessage)
+
+	return errtrace.Wrap(err)
 }

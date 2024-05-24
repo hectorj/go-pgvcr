@@ -1,9 +1,11 @@
 package pgvcr
 
 import (
+	"braces.dev/errtrace"
 	"context"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/sync/errgroup"
 	"log/slog"
@@ -35,9 +37,10 @@ func TestServer(t *testing.T) {
 			name: "replaying",
 			server: NewServer(
 				Config{
-					EchoFilePath: echoFilePath,
-					IsRecording:  ForceReplaying,
-					Logger:       newTestLogger(t),
+					EchoFilePath:                 echoFilePath,
+					IsRecording:                  ForceReplaying,
+					Logger:                       newTestLogger(t),
+					QueryOrderValidationStrategy: QueryOrderValidationStrategyStrict,
 				},
 			),
 		},
@@ -108,23 +111,32 @@ func newTestLogger(_ *testing.T) *slog.Logger {
 }
 
 func TestRun_Concurrency(t *testing.T) {
-	t.Skip("not implemented yet")
 	ctx, cancelFn := context.WithCancel(context.Background())
 	t.Cleanup(cancelFn)
-	db := NewPgxTestingServer(t)
+	db := NewPgxTestingServer(t, func(config *Config) {
+		config.QueryOrderValidationStrategy = QueryOrderValidationStrategyStalling
+		config.Logger = newTestLogger(t)
+	})
 
 	eg, ctx := errgroup.WithContext(ctx)
 	for i := 0; i < 10; i++ {
 		i := i
 		eg.Go(
 			func() error {
+				t.Logf("acquiring connection %d", i)
 				conn, err := db.Acquire(ctx)
-				require.NoError(t, err)
+				if !assert.NoError(t, err) {
+					return errtrace.Wrap(err)
+				}
 				defer conn.Release()
-				time.Sleep(time.Duration(rand.Intn(2000)) * time.Millisecond) //nolint:gosec
+				time.Sleep(time.Duration(rand.Intn(200)) * time.Millisecond) //nolint:gosec
+				t.Logf("selecting on connection %d", i)
 				row := conn.QueryRow(ctx, "SELECT $1::int -- query "+strconv.Itoa(i), i)
+				t.Logf("received result on connection %d", i)
 				var result int
-				require.NoError(t, row.Scan(&result))
+				if !assert.NoError(t, row.Scan(&result)) {
+					return errtrace.Wrap(err)
+				}
 				require.Equal(t, i, result)
 				return nil
 			},
