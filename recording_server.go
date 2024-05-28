@@ -64,7 +64,7 @@ func (s *server) recordingServer(ctx context.Context, listener net.Listener) (se
 
 			// Use atomic to increment the counter safely
 			backend := recordingPgprotoBackend{
-				connectionID: atomic.AddUint64(&connectionIDCounter, 1),
+				connectionID: recordedConnectionID(atomic.AddUint64(&connectionIDCounter, 1)),
 				backend:      pgproto3.NewBackend(backendConn, backendConn),
 				backendConn:  backendConn,
 				frontend:     pgproto3.NewFrontend(frontendConn, frontendConn),
@@ -87,7 +87,7 @@ func (s *server) recordingServer(ctx context.Context, listener net.Listener) (se
 }
 
 type recordingPgprotoBackend struct {
-	connectionID uint64
+	connectionID recordedConnectionID
 
 	backend     *pgproto3.Backend
 	backendConn net.Conn

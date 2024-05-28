@@ -81,8 +81,8 @@ func filterOutAuth(records []messageWithID) []messageWithID {
 }
 
 func splitGreetingsByConnectionID(records []messageWithID) ([][]messageWithID, []messageWithID, error) {
-	greetingsByConnectionID := make(map[uint64][]messageWithID)
-	connectionFinished := make(map[uint64]bool)
+	greetingsByConnectionID := make(map[recordedConnectionID][]messageWithID)
+	connectionFinished := make(map[recordedConnectionID]bool)
 	var leftovers []messageWithID
 
 	for _, record := range records {

@@ -15,15 +15,23 @@ import (
 )
 
 type incomingMessage struct {
-	connectionID uint64
+	connectionID replayingConnectionID
 	message      pgproto3.Message
 }
 
 type replayingConnection struct {
-	connectionID   uint64
+	connectionID   replayingConnectionID
 	conn           net.Conn
 	pgprotoBackend *pgproto3.Backend
 	sendLock       *sync.Mutex
+}
+
+type recordedConnectionID uint64
+type replayingConnectionID uint64
+
+type replayingConnectionMetadata struct {
+	id                replayingConnectionID
+	commandInProgress bool
 }
 
 type replayingHub struct {
@@ -31,7 +39,7 @@ type replayingHub struct {
 	replayer                     *replayer
 	connections                  []replayingConnection
 	incomingMessagesChan         chan incomingMessage
-	connectionIDsMap             map[uint64]uint64
+	connectionIDsMap             map[recordedConnectionID]replayingConnectionMetadata
 	connectionsLock              sync.Mutex
 	queryOrderValidationStrategy QueryOrderValidationStrategy
 	stalledMessages              []incomingMessage
@@ -46,7 +54,7 @@ func startReplayHub(ctx context.Context, r *replayer, listener net.Listener, que
 		replayer:                     r,
 		connections:                  make([]replayingConnection, 0, 1),
 		incomingMessagesChan:         make(chan incomingMessage),
-		connectionIDsMap:             make(map[uint64]uint64),
+		connectionIDsMap:             make(map[recordedConnectionID]replayingConnectionMetadata),
 		connectionsLock:              sync.Mutex{},
 		queryOrderValidationStrategy: queryOrderValidationStrategy,
 	}
@@ -65,7 +73,7 @@ func startReplayHub(ctx context.Context, r *replayer, listener net.Listener, que
 }
 
 func (h *replayingHub) acceptConnectionsLoop(ctx context.Context) error {
-	connectionID := uint64(0)
+	connectionID := replayingConnectionID(0)
 	for ctx.Err() == nil {
 		conn, err := h.listener.Accept()
 		if errors.Is(err, net.ErrClosed) {
@@ -155,12 +163,12 @@ func isTerminate(msg pgproto3.FrontendMessage) bool {
 }
 
 func (h *replayingHub) handleStartup(ctx context.Context, conn replayingConnection) error {
-	logDebug(ctx, "expecting startup message", slog.Uint64("connectionID", conn.connectionID))
+	logDebug(ctx, "expecting startup message", slog.Uint64("connectionID", uint64(conn.connectionID)))
 	startupMessage, err := conn.pgprotoBackend.ReceiveStartupMessage()
 	if err != nil {
 		return errtrace.Errorf("error receiving startup message: %w", err)
 	}
-	logDebug(ctx, "received startup message", slog.Any("startupMessage", startupMessage), slog.Uint64("connectionID", conn.connectionID))
+	logDebug(ctx, "received startup message", slog.Any("startupMessage", startupMessage), slog.Uint64("connectionID", uint64(conn.connectionID)))
 
 	switch startupMessage.(type) {
 	case *pgproto3.StartupMessage:
@@ -168,7 +176,7 @@ func (h *replayingHub) handleStartup(ctx context.Context, conn replayingConnecti
 		if err != nil {
 			return errtrace.Wrap(err)
 		}
-		logDebug(ctx, "sending AuthenticationOk", slog.Uint64("connectionID", conn.connectionID))
+		logDebug(ctx, "sending AuthenticationOk", slog.Uint64("connectionID", uint64(conn.connectionID)))
 		_, err = conn.conn.Write(buf)
 		if err != nil {
 			return errtrace.Wrap(err)
@@ -186,7 +194,7 @@ func (h *replayingHub) handleStartup(ctx context.Context, conn replayingConnecti
 			return errtrace.Wrap(err)
 		}
 	case *pgproto3.SSLRequest:
-		logDebug(ctx, "refusing SSL", slog.Uint64("connectionID", conn.connectionID))
+		logDebug(ctx, "refusing SSL", slog.Uint64("connectionID", uint64(conn.connectionID)))
 		_, err = conn.conn.Write([]byte("N"))
 		if err != nil {
 			return errtrace.Wrap(err)
@@ -224,7 +232,7 @@ func (h *replayingHub) mainLoop(ctx context.Context) error {
 	return errtrace.Wrap(ctx.Err())
 }
 
-func (h *replayingHub) sendErrOnWire(_ context.Context, recordedConnectionID uint64, err error) {
+func (h *replayingHub) sendErrOnWire(_ context.Context, recordedConnectionID recordedConnectionID, err error) {
 	conn := h.getConnection(recordedConnectionID)
 	conn.sendLock.Lock()
 	defer conn.sendLock.Unlock()
@@ -260,15 +268,15 @@ func (h *replayingHub) processOutgoingMessage(expectedMessage messageWithID) err
 	return errtrace.Wrap(conn.pgprotoBackend.Flush())
 }
 
-func (h *replayingHub) getConnection(recordedConnectionID uint64) replayingConnection {
+func (h *replayingHub) getConnection(recordedConnectionID recordedConnectionID) replayingConnection {
 	h.connectionsLock.Lock()
 	defer h.connectionsLock.Unlock()
 
 	connection := h.connections[len(h.connections)-1]
-	connectionID, ok := h.connectionIDsMap[recordedConnectionID]
+	rc, ok := h.connectionIDsMap[recordedConnectionID]
 	if ok {
 		connectionIndex := slices.IndexFunc(h.connections, func(connection replayingConnection) bool {
-			return connection.connectionID == connectionID
+			return connection.connectionID == rc.id
 		})
 		if connectionIndex != -1 {
 			connection = h.connections[connectionIndex]
@@ -293,8 +301,13 @@ func (h *replayingHub) processIncomingMessage(ctx context.Context, expectedMessa
 		return errtrace.Wrap(err)
 	}
 
+	_, isReadyForQuery := actualMessage.message.(*pgproto3.ReadyForQuery)
+
 	h.connectionsLock.Lock()
-	h.connectionIDsMap[expectedMessage.ConnectionID] = actualMessage.connectionID
+	h.connectionIDsMap[expectedMessage.ConnectionID] = replayingConnectionMetadata{
+		id:                actualMessage.connectionID,
+		commandInProgress: !isReadyForQuery,
+	}
 	h.connectionsLock.Unlock()
 
 	return nil
@@ -317,13 +330,12 @@ func (h *replayingHub) checkIfMessagesMatch(expectedMessage messageWithID, actua
 	if !messagesMatch {
 		return errtrace.Errorf("%w\nunexpected SQL message \nexpected:\n%q\n\t!=\nactual:\n%q\n\neither your SQL queries/params are unstable, or you need to regenerate the recording", ErrMessageMismatch, string(expectedBytes), string(actualBytes))
 	}
-	if _, isSync := expectedMessage.Message.(*pgproto3.Sync); isSync {
-		h.connectionsLock.Lock()
-		expectedConnectionID := h.connectionIDsMap[expectedMessage.ConnectionID]
-		h.connectionsLock.Unlock()
-		if expectedConnectionID != actualMessage.connectionID {
-			return errtrace.Errorf("%w: mismatched sync connection ID", ErrMessageMismatch)
-		}
+
+	h.connectionsLock.Lock()
+	rc := h.connectionIDsMap[expectedMessage.ConnectionID]
+	h.connectionsLock.Unlock()
+	if rc.commandInProgress && rc.id != actualMessage.connectionID {
+		return errtrace.Errorf("%w: mismatched connection ID", ErrMessageMismatch)
 	}
 	return nil
 }

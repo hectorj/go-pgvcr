@@ -16,13 +16,13 @@ type recorder struct {
 }
 
 type messageWithID struct {
-	ConnectionID uint64
+	ConnectionID recordedConnectionID
 	Message      pgproto3.Message
 	MessageBytes []byte // gob being dumb with empty/nil slices, we need both the message and it's byte encoding, see https://github.com/golang/go/issues/10905
 	IsIncoming   bool
 }
 
-func (r *recorder) Record(connectionID uint64, msg pgproto3.Message, isIncoming bool) error {
+func (r *recorder) Record(connectionID recordedConnectionID, msg pgproto3.Message, isIncoming bool) error {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 
