@@ -29,7 +29,7 @@ func (r *replayer) ConsumeGreetings(fn func(msgs []messageWithID) error) error {
 
 	msgs := r.greetings[r.greetingsCursor]
 
-	if r.greetingsCursor+1 < len(r.messages) {
+	if r.greetingsCursor+1 < len(r.greetings) {
 		r.greetingsCursor++
 	}
 
