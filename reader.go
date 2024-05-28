@@ -116,30 +116,32 @@ func splitGreetingsByConnectionID(records []messageWithID) ([][]messageWithID, [
 
 func filterOutPings(records []messageWithID) []messageWithID {
 	filteredRecords := make([]messageWithID, 0, len(records))
+	connectionInPingSequence := make(map[recordedConnectionID]bool)
 
-	var i int
-	for i = 0; i < len(records)-2; i++ {
-		if isPingSequence([3]pgproto3.Message{records[i].Message, records[i+1].Message, records[i+2].Message}) {
-			// This is the sequence we are looking for, skip it
-			i += 2
+	for _, record := range records {
+		if isPingQuery(record.Message) {
+			connectionInPingSequence[record.ConnectionID] = true
 			continue
 		}
-		filteredRecords = append(filteredRecords, records[i])
+		if connectionInPingSequence[record.ConnectionID] {
+			if isPingResponse(record.Message) {
+				continue
+			}
+			if isReadyForQuery(record.Message) {
+				connectionInPingSequence[record.ConnectionID] = false
+				continue
+			}
+		}
+
+		connectionInPingSequence[record.ConnectionID] = false
+		filteredRecords = append(filteredRecords, record)
 	}
-	// Handle messages after the last sequence
-	filteredRecords = append(filteredRecords, records[i:]...)
 
 	return filteredRecords
 }
 
-func isPingSequence(messages [3]pgproto3.Message) bool {
-	if !isPingQuery(messages[0]) {
-		return false
-	}
-	if !isPingResponse(messages[1]) {
-		return false
-	}
-	_, ok := messages[2].(*pgproto3.ReadyForQuery)
+func isReadyForQuery(msg pgproto3.Message) bool {
+	_, ok := msg.(*pgproto3.ReadyForQuery)
 	return ok
 }
 
