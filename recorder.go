@@ -10,9 +10,10 @@ import (
 )
 
 type recorder struct {
-	buffer  bytes.Buffer
-	encoder *gob.Encoder
-	lock    sync.Mutex
+	buffer   bytes.Buffer
+	encoder  *gob.Encoder
+	lock     sync.Mutex
+	isClosed bool
 }
 
 type messageWithID struct {
@@ -25,6 +26,10 @@ type messageWithID struct {
 func (r *recorder) Record(connectionID recordedConnectionID, msg pgproto3.Message, isIncoming bool) error {
 	r.lock.Lock()
 	defer r.lock.Unlock()
+
+	if r.isClosed {
+		return errtrace.New("recorder.Record: already closed")
+	}
 
 	if r.encoder == nil {
 		r.encoder = gob.NewEncoder(&r.buffer)
@@ -46,5 +51,13 @@ func (r *recorder) Record(connectionID recordedConnectionID, msg pgproto3.Messag
 }
 
 func (r *recorder) FlushToFile(filepath string) error {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+
+	if r.isClosed {
+		return errtrace.New("recorder.FlushToFile: already closed")
+	}
+	r.isClosed = true
+
 	return errtrace.Wrap(os.WriteFile(filepath, r.buffer.Bytes(), 0600))
 }
