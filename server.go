@@ -42,7 +42,7 @@ func NewServer(cfg Config) Server {
 type Server = *server
 
 func (s *server) Start(ctx context.Context) (StartedServer, error) {
-	ctx, cancelFn := context.WithCancel(ctx)
+	ctx, cancelFn := context.WithCancelCause(ctx)
 
 	if s.cfg.Logger != nil {
 		ctx = contextWithLogger(ctx, s.cfg.Logger)
@@ -50,7 +50,7 @@ func (s *server) Start(ctx context.Context) (StartedServer, error) {
 
 	isRecording, err := s.cfg.IsRecording(ctx, s.cfg)
 	if err != nil {
-		cancelFn()
+		cancelFn(errtrace.Wrap(err))
 		return nil, errtrace.Wrap(err)
 	}
 
@@ -59,7 +59,7 @@ func (s *server) Start(ctx context.Context) (StartedServer, error) {
 		listener, err = net.Listen("tcp", "localhost:")
 		logDebug(ctx, "started listening", slog.String("address", listener.Addr().String()))
 		if err != nil {
-			cancelFn()
+			cancelFn(errtrace.Wrap(err))
 			return nil, errtrace.Wrap(err)
 		}
 	}
@@ -82,12 +82,14 @@ func (s *server) Start(ctx context.Context) (StartedServer, error) {
 		serveFunc, connectionString, err = s.replayingServer(ctx, listener, s.cfg.QueryOrderValidationStrategy)
 	}
 	if err != nil {
-		cancelFn()
+		cancelFn(errtrace.Wrap(err))
 		return nil, errtrace.Wrap(err)
 	}
 	eg.Go(func() error {
-		defer cancelFn()
-		return serveFunc()
+		var err error
+		defer func() { cancelFn(errtrace.Wrap(err)) }()
+		err = serveFunc()
+		return errtrace.Wrap(err)
 	})
 
 	return &startedServer{
@@ -100,14 +102,14 @@ func (s *server) Start(ctx context.Context) (StartedServer, error) {
 type startedServer struct {
 	connectionString ConnectionString
 	eg               *errgroup.Group
-	cancelFn         context.CancelFunc
+	cancelFn         context.CancelCauseFunc
 }
 
 type StartedServer = *startedServer
 
 func (s *startedServer) Wait() error {
 	err := s.eg.Wait()
-	if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) || errors.Is(err, context.Canceled) {
+	if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) || errors.Is(err, context.Canceled) || errors.Is(err, ErrServerStopped) {
 		err = nil
 	}
 	if err != nil && strings.Contains(err.Error(), "use of closed network connection") {
@@ -119,8 +121,10 @@ func (s *startedServer) Wait() error {
 	return errtrace.Wrap(err)
 }
 
+const ErrServerStopped = constError("server was asked to stop")
+
 func (s *startedServer) Stop() error {
-	s.cancelFn()
+	s.cancelFn(errtrace.Wrap(ErrServerStopped))
 	return errtrace.Wrap(s.Wait())
 }
 

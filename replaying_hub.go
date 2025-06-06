@@ -102,7 +102,7 @@ func (h *replayingHub) acceptConnectionsLoop(ctx context.Context) error {
 
 		connectionID++
 	}
-	return errtrace.Wrap(ctx.Err())
+	return errtrace.Wrap(context.Cause(ctx))
 }
 
 func (h *replayingHub) receiveMessagesLoop(ctx context.Context, conn replayingConnection) {
@@ -229,7 +229,7 @@ func (h *replayingHub) mainLoop(ctx context.Context) error {
 			return errtrace.Wrap(err)
 		}
 	}
-	return errtrace.Wrap(ctx.Err())
+	return errtrace.Wrap(context.Cause(ctx))
 }
 
 func (h *replayingHub) sendErrOnWire(_ context.Context, recordedConnectionID recordedConnectionID, err error) {
@@ -353,7 +353,7 @@ func (h *replayingHub) getNextIncomingMessage(ctx context.Context) (incomingMess
 
 	select {
 	case <-ctx.Done():
-		return incomingMessage{}, errtrace.Wrap(ctx.Err())
+		return incomingMessage{}, errtrace.Wrap(context.Cause(ctx))
 	case actualMessage = <-h.incomingMessagesChan:
 	}
 	//logDebug(ctx, "received new message", slog.String("message", fmt.Sprintf("%#v", actualMessage.message)), slog.Int("stalledLeftCount", len(h.stalledMessages)))
