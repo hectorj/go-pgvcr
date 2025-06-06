@@ -33,7 +33,7 @@ func build(ctx context.Context) error {
 
 	goMod := client.Host().File("./go.mod")
 	goSum := client.Host().File("./go.sum")
-	golang := client.Container().From("golang:1.21.2").WithWorkdir("/src")
+	golang := client.Container().From("golang:1.24.2").WithWorkdir("/src")
 	golangWithDependencies := golang.WithFile("/src/go.mod", goMod).WithFile("/src/go.sum", goSum).
 		WithExec([]string{"go", "mod", "download"})
 
