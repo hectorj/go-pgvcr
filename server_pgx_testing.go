@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func NewPgxTestingServer(t *testing.T, options ...func(config *Config)) *pgxpool.Pool {
+func NewPgxTestingServer(t testing.TB, options ...func(config *Config)) *pgxpool.Pool {
 	ctx, cancelFn := context.WithCancel(context.Background())
 	t.Cleanup(cancelFn)
 	cfg := Config{
