@@ -39,9 +39,7 @@ func NewServer(cfg Config) Server {
 	}
 }
 
-type Server interface {
-	Start(ctx context.Context) (StartedServer, error)
-}
+type Server = *server
 
 func (s *server) Start(ctx context.Context) (StartedServer, error) {
 	ctx, cancelFn := context.WithCancel(ctx)
@@ -105,11 +103,7 @@ type startedServer struct {
 	cancelFn         context.CancelFunc
 }
 
-type StartedServer interface {
-	Wait() error
-	Stop() error
-	ConnectionString() ConnectionString
-}
+type StartedServer = *startedServer
 
 func (s *startedServer) Wait() error {
 	err := s.eg.Wait()
