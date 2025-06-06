@@ -1,6 +1,6 @@
 module github.com/hectorj/go-pgvcr
 
-go 1.21.2
+go 1.24.2
 
 require (
 	braces.dev/errtrace v0.3.0

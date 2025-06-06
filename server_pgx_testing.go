@@ -9,7 +9,7 @@ import (
 )
 
 func NewPgxTestingServer(t testing.TB, options ...func(config *Config)) *pgxpool.Pool {
-	ctx, cancelFn := context.WithCancel(context.Background())
+	ctx, cancelFn := context.WithCancel(t.Context())
 	t.Cleanup(cancelFn)
 	cfg := Config{
 		EchoFilePath: "testdata/" + t.Name() + ".pgvcr.gob",
@@ -17,7 +17,7 @@ func NewPgxTestingServer(t testing.TB, options ...func(config *Config)) *pgxpool
 	for _, option := range options {
 		option(&cfg)
 	}
-	server, err := NewServer(cfg).Start(context.Background())
+	server, err := NewServer(cfg).Start(ctx)
 	require.NoError(t, err)
 	t.Cleanup(
 		func() {
