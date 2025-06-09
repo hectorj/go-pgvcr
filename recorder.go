@@ -6,6 +6,7 @@ import (
 	"encoding/gob"
 	"github.com/jackc/pgx/v5/pgproto3"
 	"os"
+	"path"
 	"sync"
 )
 
@@ -58,6 +59,11 @@ func (r *recorder) FlushToFile(filepath string) error {
 		return errtrace.New("recorder.FlushToFile: already closed")
 	}
 	r.isClosed = true
+
+	err := os.MkdirAll(path.Dir(filepath), 0755)
+	if err != nil {
+		return errtrace.Wrap(err)
+	}
 
 	return errtrace.Wrap(os.WriteFile(filepath, r.buffer.Bytes(), 0600))
 }
