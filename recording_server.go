@@ -13,18 +13,16 @@ import (
 	"sync/atomic"
 )
 
-func (s *server) recordingServer(ctx context.Context, listener net.Listener) (serveFn, ConnectionString, error) {
+func (s *server) recordingServer(ctx context.Context, listener net.Listener) (serveFn, error) {
 	targetConnectionString, err := s.cfg.RealPostgresBuilder(ctx, s.cfg)
 	if err != nil {
-		return nil, "", errtrace.Wrap(err)
+		return nil, errtrace.Wrap(err)
 	}
 	targetURL, err := url.Parse(targetConnectionString)
 	if err != nil {
-		return nil, "", errtrace.Wrap(err)
+		return nil, errtrace.Wrap(err)
 	}
 	targetHost := targetURL.Host
-	targetURL.Host = listener.Addr().String()
-	newConnectionString := targetURL.String()
 
 	// We need to add an atomic counter to be used as a connection ID
 	var connectionIDCounter uint64 = 0
@@ -83,7 +81,7 @@ func (s *server) recordingServer(ctx context.Context, listener net.Listener) (se
 
 		return errtrace.Wrap(mainEg.Wait())
 	}
-	return serveFunc, newConnectionString, nil
+	return serveFunc, nil
 }
 
 type recordingPgprotoBackend struct {

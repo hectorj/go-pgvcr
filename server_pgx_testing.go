@@ -25,7 +25,13 @@ func NewPgxTestingServer(t testing.TB, options ...func(config *Config)) *pgxpool
 		},
 	)
 
-	db, err := pgxpool.New(ctx, server.ConnectionString())
+	// Use the configured connection string as a template and add the custom DialFunc
+	poolConfig, err := pgxpool.ParseConfig(defaultConnectionString)
+	require.NoError(t, err)
+
+	poolConfig.ConnConfig.Config.DialFunc = server.DialFunc()
+
+	db, err := pgxpool.NewWithConfig(ctx, poolConfig)
 	require.NoError(t, err)
 
 	return db

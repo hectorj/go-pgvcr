@@ -1,15 +1,16 @@
 package pgvcr
 
 import (
-	"braces.dev/errtrace"
 	"context"
 	"errors"
 	"fmt"
-	"golang.org/x/sync/errgroup"
 	"io"
 	"log/slog"
 	"net"
 	"strings"
+
+	"braces.dev/errtrace"
+	"golang.org/x/sync/errgroup"
 )
 
 type server struct {
@@ -54,32 +55,17 @@ func (s *server) Start(ctx context.Context) (StartedServer, error) {
 		return nil, errtrace.Wrap(err)
 	}
 
-	listener := s.cfg.Listener
-	if listener == nil {
-		listener, err = net.Listen("tcp", "localhost:")
-		logDebug(ctx, "started listening", slog.String("address", listener.Addr().String()))
-		if err != nil {
-			cancelFn(errtrace.Wrap(err))
-			return nil, errtrace.Wrap(err)
-		}
-	}
-	_ = context.AfterFunc(ctx, func() {
-		err := listener.Close()
-		if err != nil {
-			s.cfg.Logger.Error(err.Error(), slog.Any("error", err))
-		}
-	})
+	// Create pipe acceptor instead of TCP listener
+	pipeAcceptor := newPipeAcceptor(ctx)
+	logDebug(ctx, "started pipe acceptor")
 
 	eg, ctx := errgroup.WithContext(ctx)
 
-	var (
-		serveFunc        func() error
-		connectionString ConnectionString
-	)
+	var serveFunc func() error
 	if isRecording {
-		serveFunc, connectionString, err = s.recordingServer(ctx, listener)
+		serveFunc, err = s.recordingServer(ctx, pipeAcceptor)
 	} else {
-		serveFunc, connectionString, err = s.replayingServer(ctx, listener, s.cfg.QueryOrderValidationStrategy)
+		serveFunc, err = s.replayingServer(ctx, pipeAcceptor, s.cfg.QueryOrderValidationStrategy)
 	}
 	if err != nil {
 		cancelFn(errtrace.Wrap(err))
@@ -93,19 +79,44 @@ func (s *server) Start(ctx context.Context) (StartedServer, error) {
 	})
 
 	return &startedServer{
-		eg:               eg,
-		connectionString: connectionString,
-		cancelFn:         cancelFn,
+		eg:           eg,
+		cancelFn:     cancelFn,
+		pipeAcceptor: pipeAcceptor,
 	}, nil
 }
 
 type startedServer struct {
-	connectionString ConnectionString
-	eg               *errgroup.Group
-	cancelFn         context.CancelCauseFunc
+	eg           *errgroup.Group
+	cancelFn     context.CancelCauseFunc
+	pipeAcceptor *pipeAcceptor
 }
 
 type StartedServer = *startedServer
+
+// DialFunc returns a function compatible with pgconn.Config.DialFunc
+// that connects to this server via in-memory pipes
+func (s *startedServer) DialFunc() func(ctx context.Context, network, addr string) (net.Conn, error) {
+	return func(ctx context.Context, network, addr string) (net.Conn, error) {
+		clientConn, serverConn := net.Pipe()
+
+		req := pipeConnectionRequest{
+			serverConn: serverConn,
+		}
+
+		select {
+		case s.pipeAcceptor.connChan <- req:
+			return clientConn, nil
+		case <-ctx.Done():
+			_ = clientConn.Close()
+			_ = serverConn.Close()
+			return nil, context.Cause(ctx)
+		case <-s.pipeAcceptor.closeChan:
+			_ = clientConn.Close()
+			_ = serverConn.Close()
+			return nil, net.ErrClosed
+		}
+	}
+}
 
 func (s *startedServer) Wait() error {
 	err := s.eg.Wait()
@@ -126,10 +137,6 @@ const ErrServerStopped = constError("server was asked to stop")
 func (s *startedServer) Stop() error {
 	s.cancelFn(errtrace.Wrap(ErrServerStopped))
 	return errtrace.Wrap(s.Wait())
-}
-
-func (s *startedServer) ConnectionString() ConnectionString {
-	return s.connectionString
 }
 
 type serveFn func() error

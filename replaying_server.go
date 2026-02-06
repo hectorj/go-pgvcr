@@ -6,21 +6,19 @@ import (
 	"net"
 )
 
-func (s *server) replayingServer(ctx context.Context, listener net.Listener, queryOrderValidationStrategy QueryOrderValidationStrategy) (serveFn, ConnectionString, error) {
+func (s *server) replayingServer(ctx context.Context, listener net.Listener, queryOrderValidationStrategy QueryOrderValidationStrategy) (serveFn, error) {
 	greetings, records, err := readMessages(s.cfg.EchoFilePath)
 	if err != nil {
-		return nil, "", errtrace.Wrap(err)
+		return nil, errtrace.Wrap(err)
 	}
 	r := &replayer{
 		messages:  records,
 		greetings: greetings,
 	}
 
-	connectionString := "postgresql://user:password@" + listener.Addr().String() + "/db?sslmode=disable"
-
 	serveFn := func() error {
 		return errtrace.Wrap(startReplayHub(ctx, r, listener, queryOrderValidationStrategy))
 	}
 
-	return serveFn, connectionString, nil
+	return serveFn, nil
 }

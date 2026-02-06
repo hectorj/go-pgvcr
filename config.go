@@ -1,11 +1,11 @@
 package pgvcr
 
 import (
-	"braces.dev/errtrace"
 	"context"
 	"log/slog"
-	"net"
 	"os"
+
+	"braces.dev/errtrace"
 )
 
 // ConnectionString (aka dsn)
@@ -16,6 +16,8 @@ const defaultEchoFilePath = "testdata/pgvcr.gob"
 const defaultQueryOrderValidationStrategy = QueryOrderValidationStrategyStalling
 
 const defaultEnvVar = "PGVCR_CONNECTION_STRING"
+
+const defaultConnectionString = "postgres://user:password@localhost/db?sslmode=disable"
 
 var defaultPostgresBuilder = PostgresBuilderFallback(
 	PostgresBuilderViaEnvVar(defaultEnvVar),
@@ -28,7 +30,7 @@ type Config struct {
 	// EchoFilePath should be a path to a file we can read and write to store the mocking data.
 	// Default value is "testdata/pgvcr.gob"
 	EchoFilePath string
-	// RealPostgresBuilder is a function returning the network address (host:port) of a real postgres database.
+	// RealPostgresBuilder is a function returning the connection string of a real postgres database.
 	// It will only be used when recording.
 	// Default value uses "github.com/testcontainers/testcontainers-go/modules/postgres" to start a postgres in Docker.
 	// Unused in replaying mode.
@@ -42,9 +44,6 @@ type Config struct {
 	// QueryOrderValidationStrategy determines how to handle out-of-order queries in replay mode.
 	// Default is QueryOrderValidationStrategyStalling
 	QueryOrderValidationStrategy QueryOrderValidationStrategy
-	// Listener
-	// Default value listens on tcp://127.0.0.1: (random port)
-	Listener net.Listener
 }
 
 type QueryOrderValidationStrategy string
