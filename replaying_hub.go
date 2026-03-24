@@ -9,6 +9,7 @@ import (
 	"net"
 	"slices"
 	"sync"
+	"testing/synctest"
 	"time"
 
 	"braces.dev/errtrace"
@@ -295,9 +296,18 @@ func (h *replayingHub) processIncomingMessage(ctx context.Context, expectedMessa
 
 	err = h.checkIfMessagesMatch(expectedMessage, actualMessage)
 	if err != nil {
-		if errors.Is(err, ErrMessageMismatch) && h.queryOrderValidationStrategy == QueryOrderValidationStrategyStalling {
-			if h.tryStalling(ctx, expectedMessage, actualMessage) == nil {
-				return nil
+		if errors.Is(err, ErrMessageMismatch) {
+			switch h.queryOrderValidationStrategy {
+			case QueryOrderValidationStrategyStalling:
+				if h.tryStalling(ctx, expectedMessage, actualMessage) == nil {
+					return nil
+				}
+			case QueryOrderValidationStrategySynctest:
+				synctest.Wait()
+				h.stalledMessages = append(h.stalledMessages, actualMessage)
+				if h.processIncomingMessage(ctx, expectedMessage) == nil {
+					return nil
+				}
 			}
 		}
 		return errtrace.Wrap(err)

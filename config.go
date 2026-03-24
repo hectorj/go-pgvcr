@@ -1,11 +1,11 @@
 package pgvcr
 
 import (
-	"braces.dev/errtrace"
 	"context"
 	"log/slog"
-	"net"
 	"os"
+
+	"braces.dev/errtrace"
 )
 
 // ConnectionString (aka dsn)
@@ -16,6 +16,8 @@ const defaultEchoFilePath = "testdata/pgvcr.gob"
 const defaultQueryOrderValidationStrategy = QueryOrderValidationStrategyStalling
 
 const defaultEnvVar = "PGVCR_CONNECTION_STRING"
+
+const defaultConnectionString = "postgres://user:password@localhost/db?sslmode=disable"
 
 var defaultPostgresBuilder = PostgresBuilderFallback(
 	PostgresBuilderViaEnvVar(defaultEnvVar),
@@ -28,7 +30,7 @@ type Config struct {
 	// EchoFilePath should be a path to a file we can read and write to store the mocking data.
 	// Default value is "testdata/pgvcr.gob"
 	EchoFilePath string
-	// RealPostgresBuilder is a function returning the network address (host:port) of a real postgres database.
+	// RealPostgresBuilder is a function returning the connection string of a real postgres database.
 	// It will only be used when recording.
 	// Default value uses "github.com/testcontainers/testcontainers-go/modules/postgres" to start a postgres in Docker.
 	// Unused in replaying mode.
@@ -42,9 +44,6 @@ type Config struct {
 	// QueryOrderValidationStrategy determines how to handle out-of-order queries in replay mode.
 	// Default is QueryOrderValidationStrategyStalling
 	QueryOrderValidationStrategy QueryOrderValidationStrategy
-	// Listener
-	// Default value listens on tcp://127.0.0.1: (random port)
-	Listener net.Listener
 }
 
 type QueryOrderValidationStrategy string
@@ -57,6 +56,9 @@ const (
 	// This allows concurrent queries as long as your queries don't end up waiting on each other (when you have maxed out your connection pool for example).
 	// A 3 seconds timeout is configured so that it doesn't hang forever.
 	QueryOrderValidationStrategyStalling QueryOrderValidationStrategy = "stalling"
+	// QueryOrderValidationStrategySynctest uses testing/synctest for deterministic concurrent query handling.
+	// Provides fully deterministic replay by leveraging synctest's controlled goroutine scheduling.
+	QueryOrderValidationStrategySynctest QueryOrderValidationStrategy = "synctest"
 )
 
 func ForceRecording(_ context.Context, _ Config) (bool, error) {

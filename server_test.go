@@ -1,19 +1,20 @@
 package pgvcr
 
 import (
-	"braces.dev/errtrace"
 	"context"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"golang.org/x/sync/errgroup"
 	"log/slog"
 	"math/rand"
 	"os"
 	"strconv"
 	"testing"
 	"time"
+
+	"braces.dev/errtrace"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"golang.org/x/sync/errgroup"
 )
 
 func TestServer(t *testing.T) {
@@ -56,7 +57,12 @@ func TestServer(t *testing.T) {
 
 			t.Cleanup(func() { require.NoError(t, server.Stop()) })
 
-			db, err := pgxpool.New(ctx, server.ConnectionString())
+			poolConfig, err := pgxpool.ParseConfig(defaultConnectionString)
+			require.NoError(t, err)
+
+			poolConfig.ConnConfig.Config.DialFunc = server.DialFunc()
+
+			db, err := pgxpool.NewWithConfig(ctx, poolConfig)
 			require.NoError(t, err)
 
 			require.NoError(t, db.Ping(ctx))
