@@ -1,9 +1,10 @@
 package pgvcr
 
 import (
-	"braces.dev/errtrace"
 	"context"
 	"net"
+
+	"braces.dev/errtrace"
 )
 
 func (s *server) replayingServer(ctx context.Context, listener net.Listener, queryOrderValidationStrategy QueryOrderValidationStrategy) (serveFn, error) {

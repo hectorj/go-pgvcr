@@ -1,17 +1,19 @@
 package pgvcr
 
 import (
-	"braces.dev/errtrace"
 	"context"
 	"errors"
-	"github.com/jackc/pgx/v5/pgproto3"
-	"golang.org/x/sync/errgroup"
 	"io"
 	"log/slog"
 	"net"
 	"slices"
 	"sync"
+	"testing/synctest"
 	"time"
+
+	"braces.dev/errtrace"
+	"github.com/jackc/pgx/v5/pgproto3"
+	"golang.org/x/sync/errgroup"
 )
 
 type incomingMessage struct {
@@ -293,10 +295,21 @@ func (h *replayingHub) processIncomingMessage(ctx context.Context, expectedMessa
 
 	err = h.checkIfMessagesMatch(expectedMessage, actualMessage)
 	if err != nil {
-		if errors.Is(err, ErrMessageMismatch) && h.queryOrderValidationStrategy == QueryOrderValidationStrategyStalling {
-			if h.tryStalling(ctx, expectedMessage, actualMessage) == nil {
-				return nil
+		if errors.Is(err, ErrMessageMismatch) {
+			switch h.queryOrderValidationStrategy {
+			case QueryOrderValidationStrategyStalling:
+				if h.tryStalling(ctx, expectedMessage, actualMessage) == nil {
+					return nil
+				}
+			case QueryOrderValidationStrategySynctest:
+				synctest.Wait()
+				err := h.processIncomingMessage(ctx, expectedMessage)
+				h.stalledMessages = append(h.stalledMessages, actualMessage)
+				if err == nil {
+					return nil
+				}
 			}
+
 		}
 		return errtrace.Wrap(err)
 	}

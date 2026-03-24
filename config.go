@@ -56,6 +56,11 @@ const (
 	// This allows concurrent queries as long as your queries don't end up waiting on each other (when you have maxed out your connection pool for example).
 	// A 3 seconds timeout is configured so that it doesn't hang forever.
 	QueryOrderValidationStrategyStalling QueryOrderValidationStrategy = "stalling"
+	// QueryOrderValidationStrategySynctest uses testing/synctest for deterministic concurrent query handling.
+	// Requires GOEXPERIMENT=synctest to be enabled.
+	// This strategy provides fully deterministic replay of concurrent queries by leveraging synctest's
+	// controlled goroutine scheduling and fake time. No timeouts or stalling needed.
+	QueryOrderValidationStrategySynctest QueryOrderValidationStrategy = "synctest"
 )
 
 func ForceRecording(_ context.Context, _ Config) (bool, error) {
