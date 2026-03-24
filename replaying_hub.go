@@ -1,17 +1,19 @@
 package pgvcr
 
 import (
-	"braces.dev/errtrace"
 	"context"
+	"encoding/json"
 	"errors"
-	"github.com/jackc/pgx/v5/pgproto3"
-	"golang.org/x/sync/errgroup"
 	"io"
 	"log/slog"
 	"net"
 	"slices"
 	"sync"
 	"time"
+
+	"braces.dev/errtrace"
+	"github.com/jackc/pgx/v5/pgproto3"
+	"golang.org/x/sync/errgroup"
 )
 
 type incomingMessage struct {
@@ -328,7 +330,9 @@ func (h *replayingHub) checkIfMessagesMatch(expectedMessage messageWithID, actua
 	}
 	messagesMatch := slices.Equal(expectedBytes, actualBytes)
 	if !messagesMatch {
-		return errtrace.Errorf("%w\nunexpected SQL message \nexpected:\n%q\n\t!=\nactual:\n%q\n\neither your SQL queries/params are unstable, or you need to regenerate the recording", ErrMessageMismatch, string(expectedBytes), string(actualBytes))
+		expectedJSON, _ := json.MarshalIndent(expectedMessage.Message, "", "\t")
+		actualJSON, _ := json.MarshalIndent(actualMessage.message, "", "\t")
+		return errtrace.Errorf("%w\nunexpected SQL message\n\nExpected:\n%s\n\nActual:\n%s\n\nEither your SQL queries/params are unstable, or you need to regenerate the recording", ErrMessageMismatch, expectedJSON, actualJSON)
 	}
 
 	h.connectionsLock.Lock()
