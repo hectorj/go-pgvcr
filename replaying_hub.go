@@ -303,13 +303,11 @@ func (h *replayingHub) processIncomingMessage(ctx context.Context, expectedMessa
 				}
 			case QueryOrderValidationStrategySynctest:
 				synctest.Wait()
-				err := h.processIncomingMessage(ctx, expectedMessage)
 				h.stalledMessages = append(h.stalledMessages, actualMessage)
-				if err == nil {
+				if h.processIncomingMessage(ctx, expectedMessage) == nil {
 					return nil
 				}
 			}
-
 		}
 		return errtrace.Wrap(err)
 	}

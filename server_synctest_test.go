@@ -13,7 +13,6 @@ import (
 )
 
 func TestRun_Concurrency_Synctest(t *testing.T) {
-	// This test demonstrates the synctest strategy for deterministic concurrent testing
 	const echoFilePath = "testdata/TestRun_Concurrency_Synctest.pgvcr.gob"
 
 	runTest := func(t *testing.T, ctx context.Context, isRecording func(ctx context.Context, cfg Config) (bool, error)) {
@@ -30,7 +29,6 @@ func TestRun_Concurrency_Synctest(t *testing.T) {
 		poolConfig, err := pgxpool.ParseConfig("postgres://user:password@localhost/db?sslmode=disable")
 		require.NoError(t, err)
 
-		// Practically disable background health checks to avoid synctest bubble issues
 		poolConfig.HealthCheckPeriod = time.Hour
 		poolConfig.ConnConfig.Config.DialFunc = server.DialFunc()
 
@@ -38,7 +36,6 @@ func TestRun_Concurrency_Synctest(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		// Run concurrent queries - with synctest these execute deterministically
 		eg, ctx := errgroup.WithContext(ctx)
 		for i := 0; i < 10; i++ {
 			i := i
@@ -66,7 +63,6 @@ func TestRun_Concurrency_Synctest(t *testing.T) {
 			t.Skip("skipping recording test in short mode")
 		}
 
-		// Recording MUST run outside synctest bubble because container startup uses time.Sleep
 		ctx, cancelFn := context.WithCancel(context.Background())
 		defer cancelFn()
 
@@ -74,7 +70,6 @@ func TestRun_Concurrency_Synctest(t *testing.T) {
 	})
 
 	t.Run("replaying", func(t *testing.T) {
-		// Replaying runs inside synctest bubble for deterministic concurrent execution
 		synctest.Test(t, func(t *testing.T) {
 			ctx, cancelFn := context.WithCancel(context.Background())
 			defer cancelFn()
@@ -85,7 +80,6 @@ func TestRun_Concurrency_Synctest(t *testing.T) {
 }
 
 func TestServer_Synctest(t *testing.T) {
-	// This test demonstrates basic synctest usage with single connection
 	const echoFilePath = "testdata/TestServer_Synctest.pgvcr.gob"
 
 	runTest := func(t *testing.T, ctx context.Context, isRecording func(ctx context.Context, cfg Config) (bool, error)) {
@@ -102,7 +96,6 @@ func TestServer_Synctest(t *testing.T) {
 		poolConfig, err := pgxpool.ParseConfig("postgres://user:password@localhost/db?sslmode=disable")
 		require.NoError(t, err)
 
-		// Practically disable background health checks to avoid synctest bubble issues
 		poolConfig.HealthCheckPeriod = time.Hour
 		poolConfig.ConnConfig.Config.DialFunc = server.DialFunc()
 
@@ -137,7 +130,6 @@ func TestServer_Synctest(t *testing.T) {
 			t.Skip("skipping recording test in short mode")
 		}
 
-		// Recording MUST run outside synctest bubble because container startup uses time.Sleep
 		ctx, cancelFn := context.WithCancel(context.Background())
 		defer cancelFn()
 
@@ -145,7 +137,6 @@ func TestServer_Synctest(t *testing.T) {
 	})
 
 	t.Run("replaying", func(t *testing.T) {
-		// Replaying runs inside synctest bubble for deterministic execution
 		synctest.Test(t, func(t *testing.T) {
 			ctx, cancelFn := context.WithCancel(context.Background())
 			defer cancelFn()

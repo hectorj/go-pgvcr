@@ -57,9 +57,7 @@ const (
 	// A 3 seconds timeout is configured so that it doesn't hang forever.
 	QueryOrderValidationStrategyStalling QueryOrderValidationStrategy = "stalling"
 	// QueryOrderValidationStrategySynctest uses testing/synctest for deterministic concurrent query handling.
-	// Requires GOEXPERIMENT=synctest to be enabled.
-	// This strategy provides fully deterministic replay of concurrent queries by leveraging synctest's
-	// controlled goroutine scheduling and fake time. No timeouts or stalling needed.
+	// Provides fully deterministic replay by leveraging synctest's controlled goroutine scheduling.
 	QueryOrderValidationStrategySynctest QueryOrderValidationStrategy = "synctest"
 )
 
