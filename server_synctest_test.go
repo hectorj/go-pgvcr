@@ -2,15 +2,54 @@ package pgvcr
 
 import (
 	"context"
+	"errors"
 	"strconv"
+	"sync"
 	"testing"
 	"testing/synctest"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/sync/errgroup"
 )
+
+// Regression test for https://github.com/hectorj/go-pgvcr/issues/2:
+// processIncomingMessage under QueryOrderValidationStrategySynctest used to push
+// the mismatched message onto stalledMessages *before* recursing. Since
+// getNextIncomingMessage pops stalledMessages LIFO first, the recursive call
+// kept getting the same message back and the goroutine stack-overflowed.
+func TestReplayingHub_SynctestMismatch_DoesNotInfiniteRecurse(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		h := &replayingHub{
+			replayer:                     &replayer{},
+			incomingMessagesChan:         make(chan incomingMessage),
+			connectionIDsMap:             make(map[recordedConnectionID]replayingConnectionMetadata),
+			connectionsLock:              sync.Mutex{},
+			queryOrderValidationStrategy: QueryOrderValidationStrategySynctest,
+		}
+
+		// Prime a stalled message that won't match what we expect.
+		h.stalledMessages = append(h.stalledMessages, incomingMessage{
+			connectionID: 0,
+			message:      &pgproto3.Query{String: "SELECT 1"},
+		})
+
+		expected := messageWithID{
+			ConnectionID: 0,
+			IsIncoming:   true,
+			Message:      &pgproto3.Query{String: "SELECT 2"},
+		}
+
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		err := h.processIncomingMessage(ctx, expected)
+		require.Error(t, err)
+		require.True(t, errors.Is(err, ErrMessageMismatch), "expected ErrMessageMismatch, got: %v", err)
+	})
+}
 
 func TestRun_Concurrency_Synctest(t *testing.T) {
 	const echoFilePath = "testdata/TestRun_Concurrency_Synctest.pgvcr.gob"
